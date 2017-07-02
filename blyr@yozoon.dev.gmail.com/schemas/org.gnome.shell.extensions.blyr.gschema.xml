@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema path="/org/gnome/shell/extensions/blyr/" id="org.gnome.shell.extensions.blyr">
+    <!-- Blur -->
+    <key type="d" name="radius">
+      <default>10.0</default>
+      <summary>Blur radius</summary>
+      <description>Influences the blur effect strenght</description>
+    </key>
+    <key type="b" name="vignette">
+      <default>true</default>
+      <summary>Enable or disable the Overview Vignette Effect</summary>
+      <description>Enable or disable the Overview Vignette Effect</description>
+    </key>
+    <key type="b" name="dim">
+      <default>true</default>
+      <summary>Enable or disable dimming with the blur shader</summary>
+      <description>Enable or disable dimming with the blur shader</description>
+    </key>
+    <key type="d" name="brightness">
+      <default>0.7</default>
+      <summary>Brightness value</summary>
+      <description>Sets the brightness of the Overview background</description>
+    </key>
+    <key type="b" name="animate">
+      <default>false</default>
+      <summary>Animate Overview transition</summary>
+      <description>Animate Overview transition</description>
+    </key>
+  </schema>
+</schemalist>

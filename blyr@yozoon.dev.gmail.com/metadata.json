@@ -1,0 +1,13 @@
+{
+  "name": "Blyr",
+  "description": "Adds a Blur Effect to GNOME Shell UI Elements.",
+  "uuid": "blyr@yozoon.dev.gmail.com",
+  "shell-version": [
+    "3.18",
+    "3.20",
+    "3.22",
+    "3.24"
+  ],
+  "url": "https://github.com/yozoon/gnome-shell-extension-blyr",
+  "version": 1
+}

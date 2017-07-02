@@ -1,0 +1,89 @@
+<html>
+  <body>
+    <div id="div1"></div>
+    <script type="text/javascript">
+      document.body.onload = addElement;
+      function addElement () {
+        var numberOfGroups= 8;
+        var radius_step = 5; 
+        var groupPartitions = radius_step; // Number of size steps
+        var arraySize = numberOfGroups*radius_step + 1;
+        console.log(arraySize);
+        var max = Math.sqrt(Math.log(10)); // distance from 0 at which gauss distribution reached value 0.1 (from 1.0 at x=0)
+
+        var declarationDiv = document.createElement("div"); 
+        var line1 = document.createTextNode("struct Weight {"); 
+        var line2 = document.createTextNode("    int elements;");
+        var line3 = document.createTextNode("    float[" + arraySize.toString() +"] weights;");
+        var line4 = document.createTextNode("};");
+        var line5 = document.createTextNode("Weight[" + numberOfGroups.toString() + "] bands;");
+
+        declarationDiv.appendChild(line1);
+        var br = document.createElement("br");
+        declarationDiv.appendChild(br);
+        declarationDiv.appendChild(line2);
+        var br = document.createElement("br");
+        declarationDiv.appendChild(br);
+        declarationDiv.appendChild(line3);
+        var br = document.createElement("br");
+        declarationDiv.appendChild(br);
+        declarationDiv.appendChild(line4);
+        var br = document.createElement("br");
+        declarationDiv.appendChild(br);
+        declarationDiv.appendChild(line5);
+
+        // add the newly created element and its content into the DOM 
+        var currentDiv = document.getElementById("div1"); 
+        document.body.insertBefore(declarationDiv, currentDiv);
+
+
+        for(let j = 0; j < numberOfGroups; j++) {
+          var sum = 1;
+          var weight = [];
+          // Calculate weights
+          weight[0] = 1;
+          for(let i = 1; i <= groupPartitions; i++) {
+              weight[i] = Math.exp(-Math.pow(i*max/groupPartitions,2));
+              sum += 2*weight[i];
+          }
+          //+arraySize.toString()+"
+          var start_content = "bands["+j.toString()+ "].elements = " + (groupPartitions+1).toString() + ";";
+          var content = "bands["+j.toString()+ "].weights = float[](";
+          // Normalize Weights
+          for(let i = 0; i <= arraySize-2; i++) {
+            //console.log(i);
+            //console.log(weight[i]);
+            if(weight[i] == undefined) {
+              content += "0.0";
+            } else {
+              weight[i] = weight[i] / sum;
+              content += weight[i].toString();
+            }
+            if(i != arraySize-2){
+              content += ", ";
+            } else {
+              content += ");";
+            }
+            //console.log(weight[i]);
+          }
+          groupPartitions += radius_step;
+          // create a new div element 
+          // and give it some content 
+          var newDiv = document.createElement("div"); 
+          var startContent = document.createTextNode(start_content); 
+          newDiv.appendChild(startContent); //add the text node to the newly created div. 
+
+          var br = document.createElement("br");
+          newDiv.appendChild(br);
+
+          var newContent = document.createTextNode(content); 
+          newDiv.appendChild(newContent); //add the text node to the newly created div. 
+
+          // add the newly created element and its content into the DOM 
+          var currentDiv = document.getElementById("div1"); 
+          document.body.insertBefore(newDiv, currentDiv);
+        }
+      }
+    </script>
+  </body>
+</html>
