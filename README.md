@@ -1,15 +1,19 @@
 # gnome-shell-extension-blyr
 Apply a Blur Effect to GNOME Shell UI Elements
-<img src="https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/blyr.png" width="48">
+
+![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/blyr.png "Logo")
 
 ## Screenshots
 Overview with blur radius 10 applied:
+
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/screenshots/Overview_10.png "Overview 10")
 
 Overview with blur radius 30 applied:
+
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/screenshots/Overview_30.png "Overview 30")
 
 Extension Preferences:
+
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/screenshots/Prefs_30.png "Prefs 30")
 
 ## Manual Installation
