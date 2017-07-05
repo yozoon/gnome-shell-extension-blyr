@@ -16,7 +16,12 @@ Extension Preferences:
 
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/screenshots/Prefs_30.png "Prefs 30")
 
-## Manual Installation
+## Install
+### Official
+Currently the extension undergoes the review process (README will be updated as soon as the extension is accepted):
+https://extensions.gnome.org/review/7044
+
+### Manual
 
 ```bash
 git clone git@github.com:yozoon/gnome-shell-extension-blyr.git
