@@ -19,7 +19,7 @@ Extension Preferences:
 ## Install
 ### Official
 Currently the extension undergoes the review process (README will be updated as soon as the extension is accepted):
-https://extensions.gnome.org/review/7044
+[extensions.gnome.org](https://extensions.gnome.org/review/7044)
 
 ### Manual
 
