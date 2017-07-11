@@ -16,10 +16,10 @@ Extension Preferences:
 
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/screenshots/Prefs_30.png "Prefs 30")
 
-## Install
+## Installation
 ### Official
-Currently the extension undergoes the review process (README will be updated as soon as the extension is accepted):
-[extensions.gnome.org](https://extensions.gnome.org/review/7044)
+Install *blyr* using the official repository:
+[extensions.gnome.org](https://extensions.gnome.org/extension/1251/blyr/)
 
 ### Manual
 
@@ -29,3 +29,7 @@ cd gnome-shell-extension-blyr/
 cp -r blyr@yozoon.dev.gmail.com ~/.local/share/gnome-shell/extensions
 ```
 Now restart the Shell and enable the extension. 
+
+### Arch Linux
+Thanks to [morealaz](https://github.com/morealaz) the extension is now available in the AUR:
+[aur.archlinux.org](https://aur.archlinux.org/packages/gnome-shell-extension-blyr-git/)
