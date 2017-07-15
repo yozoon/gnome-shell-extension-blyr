@@ -215,7 +215,7 @@ const ShaderEffect = new Lang.Class({
             "standard::size",
             Gio.FileQueryInfoFlags.NONE,
             null).get_size();
-        let stream = input_file.open_readwrite(null).get_input_stream();
+        let stream = input_file.read(null);
         let data = stream.read_bytes(size, null).get_data();
         stream.close(null);
         return data;

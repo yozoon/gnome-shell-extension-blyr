@@ -43,7 +43,6 @@ void main(void) {
     // Blur 
     vec2 pos = cogl_tex_coord_in[0].xy; 
     vec4 color = vec4(0.0); 
-    //int band = int(floor(float(radius)/5)); 
     int band = int(radius/5);
 
     color += texture2D(tex, pos) * bands[band].weights[0]; 

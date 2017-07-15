@@ -184,8 +184,6 @@ function buildPrefsWidget(){
     var stage = embed.get_stage();
     stage.add_child(texture);
 
-    //shaderEffect.brightness = 1.0;
-
     grid.show_all();
 
     //------------------------------------------------------------------------//
@@ -193,8 +191,6 @@ function buildPrefsWidget(){
     blur_slider.connect('value-changed', function(widget) {
         // Get radius from scale
         radius = blur_slider.get_value();
-        // Remove filter
-        //shaderEffect.removeShader(texture);
         // Update filter with new value
         shaderEffect.applyShader(texture);
         // Save current radius
@@ -202,7 +198,6 @@ function buildPrefsWidget(){
     });
 
     eventbox.connect("button_press_event", function(widget) {
-        log("clicked");
         shaderEffect.animateShader(texture);
     });
 
