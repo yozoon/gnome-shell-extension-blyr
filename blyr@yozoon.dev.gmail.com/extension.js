@@ -38,6 +38,7 @@
 
 const Main = imports.ui.main;
 const ExtensionUtils = imports.misc.extensionUtils;
+const Clutter = imports.gi.Clutter;
 
 const Extension = ExtensionUtils.getCurrentExtension();
 const Effect = Extension.imports.effect;
@@ -50,7 +51,7 @@ const _shadeBackgrounds = Main.overview._shadeBackgrounds;
 let shaderEffect = new Effect.ShaderEffect();
 let view = Main.overview;
 
-let overview_showing_connection, overview_hiding_connection;
+let overview_showing_connection, overview_hiding_connection, monitor_changed_connection;
 let setting_changed_connection;
 let animate, vignette, backgrounds;
 
@@ -65,34 +66,26 @@ function enable() {
 
     // Settings changed listener
     setting_changed_connection = settings.connect("changed", function(){
-        if(settings.get_boolean("vignette")) {
-            overviewInject(true);
-        } else {
-            overviewInject(false);
-        }
-
         // If vignette settings changed
         if(vignette != settings.get_boolean("vignette")) {
             vignette = settings.get_boolean("vignette");
             overviewInject(vignette);
         }
-
         // If animation settings changed
         if(animate != settings.get_boolean("animate")) {
+            // Reset Effect
+            //removeEffect(true);
             Main.overview.disconnect(overview_hiding_connection);
             animate = settings.get_boolean("animate");
             if(animate) {
                 // Overview Hiding listener
                 overview_hiding_connection = Main.overview.connect("hiding", 
                     function(){
-                    removeEffect();
+                    removeEffect(false);
                 });
             } else {
                 // Overview Hidden listener
-                overview_hiding_connection = Main.overview.connect("hidden", 
-                    function(){
-                    removeEffect();
-                });
+                overview_hiding_connection = Main.overview.connect("hidden", function(){});
             }
         }
     });
@@ -101,25 +94,33 @@ function enable() {
     overview_showing_connection = Main.overview.connect("showing", function(){
         applyEffect();
     });
+
+    monitor_changed_connection = Main.layoutManager.connect('monitors-changed', function(){
+        overviewInject(vignette);
+        // TODO: reset Effects to delete effect array?
+    });
     
     if(animate) {
         // Overview Hiding listener
         overview_hiding_connection = Main.overview.connect("hiding", function(){
-            removeEffect();
+            removeEffect(false);
         });
     } else {
         // Overview Hidden listener
         overview_hiding_connection = Main.overview.connect("hidden", function(){
-            removeEffect();
         });
     }
 };
 
 function disable () {
+    // Disconnect Callbacks
     Main.overview.disconnect(overview_showing_connection);
     Main.overview.disconnect(overview_hiding_connection);
+    Main.layoutManager.disconnect(monitor_changed_connection);
     settings.disconnect(setting_changed_connection);
-    removeEffect();
+
+    // Reset UI to its original state
+    removeEffect(true);
     overviewInject(false);
 };
 
@@ -133,30 +134,25 @@ function overviewInject(flag){
 
 function applyEffect(){
     backgrounds = view._backgroundGroup.get_children();
-    animate = settings.get_boolean("animate");
 
+    animate = settings.get_boolean("animate");
     if(animate) {
-        for (let co=0; co<backgrounds.length; co++) {// Cycle through displays
-            shaderEffect.animateShader(backgrounds[co]);
-        }
+        shaderEffect.animate_effect(backgrounds);
     } else {
-        for (let co=0; co<backgrounds.length; co++) {// Cycle through displays
-            shaderEffect.applyShader(backgrounds[co]);
-        }
+        shaderEffect.apply_effect(backgrounds);
     }
 }
 
-function removeEffect(){
+function removeEffect(reset){
     backgrounds = view._backgroundGroup.get_children();
-    animate = settings.get_boolean("animate");
-
-    if(animate) {
-        for (let co=0; co<backgrounds.length; co++) {// Cycle through displays
-            shaderEffect.animateShader(backgrounds[co]);
-        }
+    if(reset) {
+        shaderEffect.remove_effect(backgrounds);
     } else {
-        for (let co=0; co<backgrounds.length; co++) {// Cycle through displays
-            shaderEffect.removeShader(backgrounds[co]);
+        animate = settings.get_boolean("animate");
+        if(animate) {
+            shaderEffect.animate_effect(backgrounds);
+        } else {
+            shaderEffect.remove_effect(backgrounds);
         }
     }
 }

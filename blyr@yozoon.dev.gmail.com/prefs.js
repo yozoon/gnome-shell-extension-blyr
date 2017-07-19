@@ -174,15 +174,16 @@ function buildPrefsWidget(){
     let path = Extension.dir.get_child('assets').get_path();
 
     // Create Clutter.Texture from image
-    var texture = new Clutter.Texture({
+    let texture = [];
+    texture[0] = new Clutter.Texture({
         filename: path + '/kingscanyon.png',
         width : 600
     });
 
     // Apply blur
-    shaderEffect.applyShader(texture);
+    shaderEffect.apply_effect(texture);
     var stage = embed.get_stage();
-    stage.add_child(texture);
+    stage.add_child(texture[0]);
 
     grid.show_all();
 
@@ -191,14 +192,15 @@ function buildPrefsWidget(){
     blur_slider.connect('value-changed', function(widget) {
         // Get radius from scale
         radius = blur_slider.get_value();
-        // Update filter with new value
-        shaderEffect.applyShader(texture);
+        // Remove filter
+
+        shaderEffect.apply_effect(texture);
         // Save current radius
         settings.set_double("radius", radius);
     });
 
     eventbox.connect("button_press_event", function(widget) {
-        shaderEffect.animateShader(texture);
+        shaderEffect.animate_effect(texture);
     });
 
     vignette_sw.connect("notify::active", function(widget) {
@@ -210,7 +212,7 @@ function buildPrefsWidget(){
         // Get brightness from scale
         brightness = brightness_slider.get_value();
         // Update filter with new value
-        shaderEffect.applyShader(texture);
+        shaderEffect.apply_effect(texture);
     });
 
     brightness_slider.connect('value-changed', function(widget) {
@@ -219,7 +221,7 @@ function buildPrefsWidget(){
         // Save current radius
         settings.set_double("brightness", brightness);
         // Update filter with new value
-        shaderEffect.applyShader(texture);
+        shaderEffect.apply_effect(texture);
     });
 
     animate_sw.connect("notify::active", function(widget) {
