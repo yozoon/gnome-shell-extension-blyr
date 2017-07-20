@@ -160,64 +160,67 @@ const ShaderEffect = new Lang.Class({
         }
 
         let shader_effect = this.shader_effect;
+        let count = 0;
 
         for(let i = 0; i < actors.length; i++) {
-            let count = 0;
-            let actor = actors[i];
-            let effect = shader_effect[i];
-            GLib.timeout_add(GLib.PRIORITY_HIGH, ANIMATION_TIME_MS / ANIMATION_STEPS, function() {
-                if(flag) {
-                    if(count < ANIMATION_STEPS) {
-                        if(actor.get_effect("horizontal_blur"))
-                            actor.remove_effect_by_name("horizontal_blur");
-                        if(actor.get_effect("vertical_blur"))
-                            actor.remove_effect_by_name("vertical_blur");
-
-                        effect[0].set_uniform_value('radius', t_radius + 0.0001);
-                        effect[0].set_uniform_value('brightness', 0.9999);
-                        effect[1].set_uniform_value('radius', t_radius + 0.0001);
-                        effect[1].set_uniform_value('brightness', t_brightness + 0.0001);
-
-                        if(!actor.get_effect("horizontal_blur"))
-                            actor.add_effect_with_name("horizontal_blur", effect[0]);
-                        if(!actor.get_effect("vertical_blur"))
-                            actor.add_effect_with_name("vertical_blur", effect[1]);
-
-                        t_radius += r_inc;
-                        t_brightness -= b_inc;
-                        count++;
-                        return true; // Repeat
-                    }
-                } else {
-                    if(count < ANIMATION_STEPS) {
-                        if(actor.get_effect("horizontal_blur"))
-                            actor.remove_effect_by_name("horizontal_blur");
-                        if(actor.get_effect("vertical_blur"))
-                            actor.remove_effect_by_name("vertical_blur");
-
-                        effect[0].set_uniform_value('radius', t_radius + 0.0001);
-                        effect[1].set_uniform_value('radius', t_radius + 0.0001);
-                        effect[1].set_uniform_value('brightness', t_brightness + 0.0001);
-
-                        if(!actor.get_effect("horizontal_blur"))
-                            actor.add_effect_with_name("horizontal_blur", effect[0]);
-                        if(!actor.get_effect("vertical_blur"))
-                            actor.add_effect_with_name("vertical_blur", effect[1]);
-
-                        t_radius -= r_inc;
-                        t_brightness += b_inc;
-                        count++;
-                        return true; // Repeat
-                    }
-                    // Remove Effect when finished
-                    if(actor.get_effect("horizontal_blur"))
-                        actor.remove_effect_by_name("horizontal_blur");
-                    if(actor.get_effect("vertical_blur"))
-                        actor.remove_effect_by_name("vertical_blur");
-                }
-                return false; // Don't repeat
-            }, null);
+            // Clear Effect
+            if(actors[i].get_effect("horizontal_blur"))
+                actors[i].remove_effect_by_name("horizontal_blur");
+            if(actors[i].get_effect("vertical_blur"))
+                actors[i].remove_effect_by_name("vertical_blur");
+            // Update Shader Values
+            shader_effect[i][0].set_uniform_value('radius', t_radius + 0.0001);
+            shader_effect[i][0].set_uniform_value('brightness', 0.9999);
+            shader_effect[i][1].set_uniform_value('radius', t_radius + 0.0001);
+            shader_effect[i][1].set_uniform_value('brightness', t_brightness + 0.0001);
+            // Add Effect
+            if(!actors[i].get_effect("horizontal_blur"))
+                actors[i].add_effect_with_name("horizontal_blur", shader_effect[i][0]);
+            if(!actors[i].get_effect("vertical_blur"))
+                actors[i].add_effect_with_name("vertical_blur", shader_effect[i][1]);
         }
+
+        GLib.timeout_add(GLib.PRIORITY_HIGH, ANIMATION_TIME_MS / ANIMATION_STEPS, function() {
+            if(flag) {
+                if(count < ANIMATION_STEPS) {
+                    for(let i = 0; i < actors.length; i++) {
+                        // Update Shader Values
+                        shader_effect[i][0].set_uniform_value('radius', t_radius + 0.0001);
+                        shader_effect[i][0].set_uniform_value('brightness', 0.9999);
+                        shader_effect[i][1].set_uniform_value('radius', t_radius + 0.0001);
+                        shader_effect[i][1].set_uniform_value('brightness', t_brightness + 0.0001);
+                    }
+
+                    t_radius += r_inc;
+                    t_brightness -= b_inc;
+                    count++;
+                    return true; // Repeat
+                }
+            } else {
+                if(count < ANIMATION_STEPS) {
+                    for(let i = 0; i < actors.length; i++) {
+                        // Update Shader Values
+                        shader_effect[i][0].set_uniform_value('radius', t_radius + 0.0001);
+                        shader_effect[i][0].set_uniform_value('brightness', 0.9999);
+                        shader_effect[i][1].set_uniform_value('radius', t_radius + 0.0001);
+                        shader_effect[i][1].set_uniform_value('brightness', t_brightness + 0.0001);
+                    }
+
+                    t_radius -= r_inc;
+                    t_brightness += b_inc;
+                    count++;
+                    return true; // Repeat
+                }
+                // Remove Effect when finished
+                for(let i = 0; i < actors.length; i++) {
+                    if(actors[i].get_effect("horizontal_blur"))
+                        actors[i].remove_effect_by_name("horizontal_blur");
+                    if(actors[i].get_effect("vertical_blur"))
+                        actors[i].remove_effect_by_name("vertical_blur");
+                }
+            }
+            return false; // Don't repeat
+        }, null);
     },
 
     apply_effect : function(actors) {
