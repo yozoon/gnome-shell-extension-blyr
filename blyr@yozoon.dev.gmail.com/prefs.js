@@ -37,196 +37,238 @@
  */
  
 const Gtk = imports.gi.Gtk;
+const GLib = imports.gi.GLib;
 const Clutter = imports.gi.Clutter;
 const GtkClutter = imports.gi.GtkClutter;
 const ExtensionUtils = imports.misc.extensionUtils;
 
+const Lang = imports.lang;
+
 const Extension = ExtensionUtils.getCurrentExtension();
 const Shared = Extension.imports.shared;
-
-const settings = Shared.getSettings(Shared.SCHEMA_NAME, 
-    Extension.dir.get_child('schemas').get_path());
-
 const Effect = Extension.imports.effect;
 
-let animation;
-let radius;
-let brightness;
-let shaderEffect;
+const UPDATE_TIMEOUT = 500;
 
-let blurred = true;
+const BlyrPrefsWidget = new Lang.Class ({
+    Name: 'BlyrPrefsWidget',
+    Extends: Gtk.Grid,
+    _init: function() {
+        this.parent({
+            margin: 15, 
+            row_spacing : 15,
+            vexpand : false
+        });
+        this._settings = Shared.getSettings(Shared.SCHEMA_NAME, 
+            Extension.dir.get_child('schemas').get_path());
+        this.shaderEffect = new Effect.ShaderEffect();
+        this._get_settings();
+        //this._checkDist();
+        this._buildUI();
+        this._init_callbacks();
+    },
+    _get_settings: function() {
+        this.radius = this._settings.get_double("radius");
+        this.brightness = this._settings.get_double("brightness");
+        this.vignette = this._settings.get_boolean("vignette");
+        this.dim = this._settings.get_boolean("dim");
+        this.animate = this._settings.get_boolean("animate");
+    },
+    /*
+    _checkDist: function() {
+        let e;
+        let dist;
+        let err;
+        try {
+            log("checking dist");
+            GLib.spawn_command_line_sync("ls", dist, err, e);
+            log("dist checked");
+            log("Current Distribution: " + dist);
+            log("err: " + err);
+            log("e: " + e);
+        } catch (e) {
+            throw e;
+        }
+    },
+    */
+    _buildUI: function() {
+        //------------------------------------------------------------------------//
+        // Blur label
+        let blur_label = new Gtk.Label({
+            halign : Gtk.Align.START
+        });
+        blur_label.set_markup("<b>Blur Radius</b>");
+
+        // Blur slider
+        this.blur_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,
+            1.0,30.0,0.1);
+        this.blur_slider.set_value(this.radius);
+
+        //------------------------------------------------------------------------//
+        // Effect Preview
+        this.eventbox = new Gtk.EventBox();
+        let embed = new GtkClutter.Embed();
+        embed.set_size_request(600, 150);
+        this.eventbox.add(embed);
+
+        // Get extension path
+        let path = Extension.dir.get_child('assets').get_path();
+
+        // Create Clutter.Texture from image
+        this.texture = [];
+        this.texture[0] = new Clutter.Texture({
+            filename: path + '/kingscanyon.png',
+            width : 600
+        });
+
+        // Apply blur
+        this.shaderEffect.apply_effect(this.texture);
+        let stage = embed.get_stage();
+        stage.add_child(this.texture[0]);
+
+        //------------------------------------------------------------------------//
+        // Vignette label
+        let vignette_label = new Gtk.Label({
+            halign : Gtk.Align.START
+        });
+        vignette_label.set_markup("<b>Disable Overview Vignette Effect</b>");
+
+        // Vignette switch
+        this.vignette_sw = new Gtk.Switch({
+            name : "Disable Overview Vignette Effect",
+            active : this._settings.get_boolean("vignette"),
+            halign : Gtk.Align.END,
+            valign : Gtk.Align.START
+        });
+
+        //------------------------------------------------------------------------//
+        // Dim label
+        let dim_label = new Gtk.Label({
+            halign : Gtk.Align.START
+        });
+        dim_label.set_markup("<b>Dim Overview background</b>");
+
+        // Dim switch
+        this.dim_sw = new Gtk.Switch({
+            name : "Dim Overview Background",
+            active : this._settings.get_boolean("dim"),
+            halign : Gtk.Align.END,
+            valign : Gtk.Align.START
+        });
+
+        // Brightness label
+        let brightness_label = new Gtk.Label({
+            halign : Gtk.Align.START
+        });
+        brightness_label.set_markup("<b>Overview background brightness</b>");
+        
+        // Brightness slider
+        this.brightness_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,
+            0.0,1.0,0.01);
+        this.brightness_slider.set_value(this.brightness);
+
+        //------------------------------------------------------------------------//
+
+        // Animation label
+        var animate_label = new Gtk.Label({
+            halign : Gtk.Align.START
+        });
+        animate_label.set_markup(
+            "<b>Animate Overview transition (experimental)</b>");
+
+        // Animation switch
+        this.animate_sw = new Gtk.Switch({
+            name : "Animate Overview transition",
+            active : this._settings.get_boolean("animate"),
+            halign : Gtk.Align.END,
+            valign : Gtk.Align.START
+        });
+
+        //------------------------------------------------------------------------//
+        // Attach UI elements to Grid
+        // attach(actor, column, row, width(colums), height(rows))
+        this.attach(blur_label, 0, 0, 1, 1);
+        this.attach(this.blur_slider, 1, 0, 2, 1);
+        this.attach(this.eventbox, 0, 1, 3, 1);
+        this.attach(vignette_label, 0, 2, 2, 1);
+        this.attach(this.vignette_sw, 2, 2, 1, 1);
+        this.attach(dim_label, 0, 3, 2, 1);
+        this.attach(this.dim_sw, 2, 3, 1, 1);
+        this.attach(brightness_label, 0, 4, 2, 1);
+        this.attach(this.brightness_slider, 1, 4, 2, 1);
+        this.attach(animate_label, 0, 5, 2, 1);
+        this.attach(this.animate_sw, 2, 5    , 1, 1);
+    },
+    _interaction: function(state) {
+        log('interaction');
+        switch(state) {
+            case 0:
+                // Get radius from scale
+                this.radius = this.blur_slider.get_value();
+                // Save current radius
+                this._settings.set_double("radius", this.radius);
+                break;
+            case 1:
+                this._settings.set_boolean("vignette", this.vignette_sw.active);
+                break;
+            case 2:
+                this._settings.set_boolean("dim", this.dim_sw.active);
+                break;
+            case 3:
+                // Get brightness from scale
+                this.brightness = this.brightness_slider.get_value();
+                // Save current radius
+                this._settings.set_double("brightness", this.brightness);
+                break;
+            case 4:
+                this._settings.set_boolean("animate", this.animate_sw.active);
+                break;
+            case 5:
+                this.shaderEffect.animate_effect(this.texture);
+                return;
+        }
+
+        // Update effect with new values
+        this.shaderEffect.apply_effect(this.texture);
+    },
+    _init_callbacks: function() {
+        this.blur_slider.connect('value-changed', Lang.bind(this, 
+            function() {
+                this._interaction(0);
+            }));
+        this.vignette_sw.connect('notify::active', Lang.bind(this, 
+            function() {
+                this._interaction(1);
+            }));
+        this.dim_sw.connect('notify::active', Lang.bind(this, 
+            function() {
+                this._interaction(2);
+            }));
+        this.brightness_slider.connect('value-changed', Lang.bind(this, 
+            function() {
+                this._interaction(3);
+            }));
+        this.animate_sw.connect('notify::active', Lang.bind(this, 
+            function() {
+                this._interaction(4);
+            }));
+        this.eventbox.connect('button_press_event', Lang.bind(this, 
+            function() {
+                this._interaction(5);
+            }));
+    }
+});
 
 function init(){
 }
 
-function buildPrefsWidget(){
-    shaderEffect = new Effect.ShaderEffect();
-    animation = new Clutter.Animation();
-
-    radius = settings.get_double("radius");
-    brightness = settings.get_double("brightness");
-
+function buildPrefsWidget() {
     // Init GtkClutter and Clutter
-    GtkClutter.init(null, 0);
-    Clutter.init(null, 0);
+    GtkClutter.init(null);
+    Clutter.init(null);
 
-    var eventbox = new Gtk.EventBox();
+    let PrefsWidget = new BlyrPrefsWidget();
+    PrefsWidget.show_all();
 
-    // Create Clutter GTK Widget
-    var embed = new GtkClutter.Embed();
-    embed.set_size_request(600, 150);
-
-    eventbox.add(embed);
-
-    // Create grid which contains the UI
-    var grid = new Gtk.Grid({ 
-        margin: 15, 
-        row_spacing : 15,
-        vexpand : false 
-    });
-
-    //------------------------------------------------------------------------//
-    // Blur label
-    var blur_label = new Gtk.Label({
-        halign : Gtk.Align.START
-    });
-    blur_label.set_markup("<b>Blur Radius</b>");
-
-    // Blur slider
-    var blur_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,
-        1.0,30.0,0.1);
-    blur_slider.set_value(radius);
-
-    //------------------------------------------------------------------------//
-    // Vignette label
-    var vignette_label = new Gtk.Label({
-        halign : Gtk.Align.START
-    });
-    vignette_label.set_markup("<b>Disable Overview Vignette Effect</b>");
-
-    // Vignette switch
-    var vignette_sw = new Gtk.Switch({
-        active : settings.get_boolean("vignette"),
-        halign : Gtk.Align.END,
-        valign : Gtk.Align.START
-    });
-    vignette_sw.name = "Disable Overview Vignette Effect";
-
-    //------------------------------------------------------------------------//
-    // Dim label
-    var dim_label = new Gtk.Label({
-        halign : Gtk.Align.START
-    });
-    dim_label.set_markup("<b>Dim Overview background</b>");
-
-    // Dim switch
-    var dim_sw = new Gtk.Switch({
-        active : settings.get_boolean("dim"),
-        halign : Gtk.Align.END,
-        valign : Gtk.Align.START
-    });
-    dim_sw.name = "Dim Overview Background";
-
-    // Brightness label
-    var brightness_label = new Gtk.Label({
-        halign : Gtk.Align.START
-    });
-    brightness_label.set_markup("<b>Overview background brightness</b>");
-    
-    // Brightness slider
-    var brightness_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,
-        0.0,1.0,0.01);
-    brightness_slider.set_value(brightness);
-
-    //------------------------------------------------------------------------//
-
-    // Animation label
-    var animate_label = new Gtk.Label({
-        halign : Gtk.Align.START
-    });
-    animate_label.set_markup(
-        "<b>Animate Overview transition (experimental)</b>");
-
-    // Animation switch
-    var animate_sw = new Gtk.Switch({
-        active : settings.get_boolean("animate"),
-        halign : Gtk.Align.END,
-        valign : Gtk.Align.START
-    });
-    animate_sw.name = "Animate Overview transition";
-
-    //------------------------------------------------------------------------//
-    // Attach UI elements to Grid
-    // attach(actor, column, row, width(colums), height(rows))
-    grid.attach(blur_label, 0, 0, 1, 1);
-    grid.attach(blur_slider, 1, 0, 2, 1);
-    grid.attach(eventbox, 0, 1, 3, 1);
-    grid.attach(vignette_label, 0, 2, 2, 1);
-    grid.attach(vignette_sw, 2, 2, 1, 1);
-    grid.attach(dim_label, 0, 3, 2, 1);
-    grid.attach(dim_sw, 2, 3, 1, 1);
-    grid.attach(brightness_label, 0, 4, 2, 1);
-    grid.attach(brightness_slider, 1, 4, 2, 1);
-    grid.attach(animate_label, 0, 5, 2, 1);
-    grid.attach(animate_sw, 2, 5    , 1, 1);
-
-    // Get extension path
-    let path = Extension.dir.get_child('assets').get_path();
-
-    // Create Clutter.Texture from image
-    let texture = [];
-    texture[0] = new Clutter.Texture({
-        filename: path + '/kingscanyon.png',
-        width : 600
-    });
-
-    // Apply blur
-    shaderEffect.apply_effect(texture);
-    var stage = embed.get_stage();
-    stage.add_child(texture[0]);
-
-    grid.show_all();
-
-    //------------------------------------------------------------------------//
-    // Value changed callback
-    blur_slider.connect('value-changed', function(widget) {
-        // Get radius from scale
-        radius = blur_slider.get_value();
-        // Remove filter
-
-        shaderEffect.apply_effect(texture);
-        // Save current radius
-        settings.set_double("radius", radius);
-    });
-
-    eventbox.connect("button_press_event", function(widget) {
-        shaderEffect.animate_effect(texture);
-    });
-
-    vignette_sw.connect("notify::active", function(widget) {
-        settings.set_boolean("vignette", widget.active);
-    });
-
-    dim_sw.connect("notify::active", function(widget) {
-        settings.set_boolean("dim", widget.active);
-        // Get brightness from scale
-        brightness = brightness_slider.get_value();
-        // Update filter with new value
-        shaderEffect.apply_effect(texture);
-    });
-
-    brightness_slider.connect('value-changed', function(widget) {
-        // Get brightness from scale
-        brightness = brightness_slider.get_value();
-        // Save current radius
-        settings.set_double("brightness", brightness);
-        // Update filter with new value
-        shaderEffect.apply_effect(texture);
-    });
-
-    animate_sw.connect("notify::active", function(widget) {
-        settings.set_boolean("animate", widget.active);
-    });
-
-    return grid;
+    return PrefsWidget;
 }
