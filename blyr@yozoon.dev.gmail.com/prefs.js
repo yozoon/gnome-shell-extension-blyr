@@ -63,7 +63,6 @@ const BlyrPrefsWidget = new Lang.Class ({
             Extension.dir.get_child('schemas').get_path());
         this.shaderEffect = new Effect.ShaderEffect();
         this._get_settings();
-        //this._checkDist();
         this._buildUI();
         this._init_callbacks();
     },
@@ -74,23 +73,6 @@ const BlyrPrefsWidget = new Lang.Class ({
         this.dim = this._settings.get_boolean("dim");
         this.animate = this._settings.get_boolean("animate");
     },
-    /*
-    _checkDist: function() {
-        let e;
-        let dist;
-        let err;
-        try {
-            log("checking dist");
-            GLib.spawn_command_line_sync("ls", dist, err, e);
-            log("dist checked");
-            log("Current Distribution: " + dist);
-            log("err: " + err);
-            log("e: " + e);
-        } catch (e) {
-            throw e;
-        }
-    },
-    */
     _buildUI: function() {
         //------------------------------------------------------------------------//
         // Blur label
@@ -101,7 +83,7 @@ const BlyrPrefsWidget = new Lang.Class ({
 
         // Blur slider
         this.blur_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,
-            1.0,30.0,0.1);
+            1.0,29.9,0.1);
         this.blur_slider.set_value(this.radius);
 
         //------------------------------------------------------------------------//
@@ -200,7 +182,6 @@ const BlyrPrefsWidget = new Lang.Class ({
         this.attach(this.animate_sw, 2, 5    , 1, 1);
     },
     _interaction: function(state) {
-        log('interaction');
         switch(state) {
             case 0:
                 // Get radius from scale
