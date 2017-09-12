@@ -1,8 +1,8 @@
-uniform sampler2D tex; 
-uniform int width; 
+uniform sampler2D tex;
+uniform int width;
 uniform int height;
 uniform int dir;
-uniform float radius; 
+uniform float radius;
 uniform float brightness;
 
 float radius_band = 5;
@@ -14,6 +14,7 @@ float[31] weights;
 ** initWeights gets executed on every pixel instance of the shader. Because of the parallel execution of the main instances every pixel instance gets a copy of the global variables,
 ** which also means that those instances can't change the value of the global variable.
 */
+
 void initWeights() {
     if(band == 1) {
         elements = 11;
@@ -37,21 +38,20 @@ void initWeights() {
 }
 
 vec2 step_size = vec2((mod(radius, radius_band)/15.0 + 1.0)/(4/3*float(width)), (mod(radius, radius_band)/15.0 + 1.0)/(4/3*float(height))); 
+
 vec2 direction = vec2(dir, (1.0-dir));
 
 void main(void) {
     initWeights();
 
-    // Blur 
-    vec2 pos = cogl_tex_coord_in[0].xy; 
-    vec4 color = vec4(vec3(0.0),1.0);
+    vec2 pos = cogl_tex_coord_in[0].xy;
 
-    color += texture2D(tex, pos) * weights[0]; 
+    cogl_color_out = texture2D(tex, pos) * weights[0]; 
     for(int t = 1; t < elements; t++) { 
-        color += texture2D(tex, pos + t * step_size * direction) * weights[t]; 
-        color += texture2D(tex, pos - t * step_size * direction) * weights[t]; 
+        cogl_color_out += texture2D(tex, pos + t * step_size * direction) * weights[t]; 
+        cogl_color_out += texture2D(tex, pos - t * step_size * direction) * weights[t]; 
     }
 
-    color.rgb = color.rgb * brightness; // Dim texture 
-    cogl_color_out = color; 
+    cogl_color_out.a = 1.0;
+    cogl_color_out.rgb *= brightness;
 }
