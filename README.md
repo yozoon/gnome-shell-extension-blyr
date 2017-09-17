@@ -1,7 +1,7 @@
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/blyr.png "Logo")
 
 # gnome-shell-extension-blyr
-Apply a Blur Effect to GNOME Shell UI Elements
+Apply a Blur Effect to the Activities screen
 
 ## Screenshots
 Overview with blur radius 10 applied:
