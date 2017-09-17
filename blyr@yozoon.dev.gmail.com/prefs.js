@@ -48,6 +48,10 @@ const Extension = ExtensionUtils.getCurrentExtension();
 const Shared = Extension.imports.shared;
 const Effect = Extension.imports.effect;
 
+const Convenience = Extension.imports.convenience;
+const Gettext = imports.gettext.domain('blyr');
+const _ = Gettext.gettext;
+
 const UPDATE_TIMEOUT = 500;
 
 const BlyrPrefsWidget = new Lang.Class ({
@@ -79,7 +83,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         let blur_label = new Gtk.Label({
             halign : Gtk.Align.START
         });
-        blur_label.set_markup("<b>Blur Radius</b>");
+        blur_label.set_markup("<b>"+_("Blur Radius")+"</b>");
 
         // Blur slider
         this.blur_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,
@@ -113,7 +117,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         let vignette_label = new Gtk.Label({
             halign : Gtk.Align.START
         });
-        vignette_label.set_markup("<b>Disable Overview Vignette Effect</b>");
+        vignette_label.set_markup("<b>"+_("Disable Overview Vignette Effect")+"</b>");
 
         // Vignette switch
         this.vignette_sw = new Gtk.Switch({
@@ -128,7 +132,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         let dim_label = new Gtk.Label({
             halign : Gtk.Align.START
         });
-        dim_label.set_markup("<b>Dim Overview background</b>");
+        dim_label.set_markup("<b>"+_("Dim Overview background")+"</b>");
 
         // Dim switch
         this.dim_sw = new Gtk.Switch({
@@ -142,7 +146,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         let brightness_label = new Gtk.Label({
             halign : Gtk.Align.START
         });
-        brightness_label.set_markup("<b>Overview background brightness</b>");
+        brightness_label.set_markup("<b>"+_("Overview background brightness")+"</b>");
         
         // Brightness slider
         this.brightness_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,
@@ -156,7 +160,7 @@ const BlyrPrefsWidget = new Lang.Class ({
             halign : Gtk.Align.START
         });
         animate_label.set_markup(
-            "<b>Animate Overview transition (experimental)</b>");
+            "<b>"+_("Animate Overview transition (experimental)")+"</b>");
 
         // Animation switch
         this.animate_sw = new Gtk.Switch({
@@ -241,6 +245,7 @@ const BlyrPrefsWidget = new Lang.Class ({
 });
 
 function init(){
+    Convenience.initTranslations("blyr");
 }
 
 function buildPrefsWidget() {
