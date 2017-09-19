@@ -1,4 +1,4 @@
-![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/blyr.png "Logo")
+![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/img/blyr.png "Logo")
 
 # gnome-shell-extension-blyr
 Apply a Blur Effect to the Activities screen
@@ -6,15 +6,15 @@ Apply a Blur Effect to the Activities screen
 ## Screenshots
 Overview with blur radius 10 applied:
 
-![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/screenshots/Overview_10.png "Overview 10")
+![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/img/Overview_10.png "Overview 10")
 
 Overview with blur radius 30 applied:
 
-![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/screenshots/Overview_30.png "Overview 30")
+![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/img/Overview_30.png "Overview 30")
 
 Extension Preferences:
 
-![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/screenshots/Prefs_30.png "Prefs 30")
+![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/img/Prefs_30.png "Prefs 30")
 
 ## Installation
 ### Official
