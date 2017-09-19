@@ -28,8 +28,4 @@ git clone git@github.com:yozoon/gnome-shell-extension-blyr.git
 cd gnome-shell-extension-blyr/
 cp -r blyr@yozoon.dev.gmail.com ~/.local/share/gnome-shell/extensions
 ```
-Now restart the Shell and enable the extension. 
-
-### Arch Linux
-Thanks to [morealaz](https://github.com/morealaz) the extension is now available in the AUR:
-[aur.archlinux.org](https://aur.archlinux.org/packages/gnome-shell-extension-blyr-git/)
+Now just restart the Shell and enable the extension.
