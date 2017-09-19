@@ -1,6 +1,6 @@
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/img/blyr.png "Logo")
 
-# gnome-shell-extension-blyr
+# Blyr
 Apply a Blur Effect to the Activities screen
 
 ## Screenshots
@@ -26,6 +26,12 @@ Install *blyr* using the official repository:
 ```bash
 git clone git@github.com:yozoon/gnome-shell-extension-blyr.git
 cd gnome-shell-extension-blyr/
-cp -r blyr@yozoon.dev.gmail.com ~/.local/share/gnome-shell/extensions
+make local-install
 ```
 Now just restart the Shell and enable the extension.
+
+To remove the extension just run:
+
+```bash
+make local-uninstall
+```
