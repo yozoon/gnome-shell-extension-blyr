@@ -6,6 +6,8 @@ LOCALPREFIX = $(HOME)/.local/share/gnome-shell/extensions
 all: 
 	@ # Ensure that build/ exists
 	@ mkdir -p "$(BUILDDIR)"
+	@ # Ensure that extensions/ directory exists
+	@ mkdir -p "$(LOCALPREFIX)"
 	@ # Compile gschemas
 	@ if [ -d "$(SOURCEDIR)/schemas/" ]; then \
 	    glib-compile-schemas "$(SOURCEDIR)/schemas/"; \
