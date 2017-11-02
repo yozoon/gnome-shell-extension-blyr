@@ -220,7 +220,7 @@ const ShaderEffect = new Lang.Class({
                 }
             }
             return false; // Don't repeat
-        }, null);
+        });
     },
 
     apply_effect : function(actors) {

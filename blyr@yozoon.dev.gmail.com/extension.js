@@ -39,120 +39,221 @@
 const Main = imports.ui.main;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Clutter = imports.gi.Clutter;
+const Shell = imports.gi.Shell;
+const Lang = imports.lang;
+const St = imports.gi.St;
 
 const Extension = ExtensionUtils.getCurrentExtension();
 const Effect = Extension.imports.effect;
 const Shared = Extension.imports.shared;
+
 const settings = Shared.getSettings(Shared.SCHEMA_NAME, 
     Extension.dir.get_child('schemas').get_path());
 
+// BlyrExtension instance
+let blyrExtension;
+
+// Make a "backup" copy of gnome-shell functions
 const _shadeBackgrounds = Main.overview._shadeBackgrounds;
 
-let shaderEffect = new Effect.ShaderEffect();
-let view = Main.overview;
+const Blyr = new Lang.Class({
+    Name: 'Blyr',
 
-let overview_showing_connection, overview_hiding_connection, monitor_changed_connection;
-let setting_changed_connection;
-let animate, vignette, backgrounds;
+    _init: function(params) {
+        this.shaderEffect = new Effect.ShaderEffect();
+        this.view = Main.overview;
+
+        this._fetchSettings();
+        this._injectJS(this.vignette);
+        this._connectCallbacks();
+    },
+
+    _fetchSettings: function() {
+        this.animate = settings.get_boolean("animate");
+        this.vignette = settings.get_boolean("vignette");
+    },
+
+    _connectCallbacks: function() {
+        // Settings changed listener
+        this.setting_changed_connection = settings.connect("changed", Lang.bind(this, function(){
+            let vignette_old = this.vignette;
+            let animate_old = this.animate;
+            this._fetchSettings();
+
+            // If vignette settings changed
+            if(vignette_old != this.vignette) {
+                this._injectJS(this.vignette);
+            }
+            // If animation settings changed
+            if(animate_old != this.animate) {
+                // reset effect
+                this._removeEffect(true);
+                // disconnect callbacks
+                this.view.disconnect(this.overview_hiding_connection);
+                this.view.disconnect(this.overview_showing_connection);
+                if(this.animate) {
+                    // Overview showing listener
+                    this.overview_showing_connection = this.view.connect("showing", Lang.bind(this, function(){
+                        this._applyEffect();
+                    }));
+                    // Overview Hiding listener
+                    this.overview_hiding_connection = this.view.connect("hiding", Lang.bind(this, function(){
+                        this._removeEffect(false);
+                    }));
+                } else {
+                    // Blur Overview in advance
+                    this._applyEffect();
+                    // Overview showing listener
+                    this.overview_showing_connection = this.view.connect("showing", function(){});
+                    // Overview Hidden listener
+                    this.overview_hiding_connection = this.view.connect("hidden", function(){});
+                }
+            }
+        }));
+        
+        if(this.animate) {
+            // Overview showing listener
+            this.overview_showing_connection = this.view.connect("showing", Lang.bind(this, function(){
+                this._applyEffect();
+            }));
+            // Overview Hiding listener
+            this.overview_hiding_connection = this.view.connect("hiding", Lang.bind(this, function(){
+                this._removeEffect(false);
+            }));
+        } else {
+            // Blur Overview in advance
+            this._applyEffect();
+            // Overview showing listener
+            this.overview_showing_connection = this.view.connect("showing", function(){});
+            // Overview Hidden listener
+            this.overview_hiding_connection = this.view.connect("hidden", function(){});
+        }
+    },
+
+    _injectJS: function(flag) {
+        if (flag) {
+            this.view._shadeBackgrounds = function(){};
+        } else {
+            this.view._shadeBackgrounds = _shadeBackgrounds;
+        }
+    },
+
+    _applyEffect: function() {
+        this._fetchSettings();
+        this.backgrounds = this.view._backgroundGroup.get_children();
+        if(this.animate) {
+            this.shaderEffect.animate_effect(this.backgrounds);
+        } else {
+            this.shaderEffect.apply_effect(this.backgrounds);
+        }
+    },
+
+    _removeEffect: function(reset) {
+        this._fetchSettings();
+        this.backgrounds = this.view._backgroundGroup.get_children();
+        if(reset) {
+            this.shaderEffect.remove_effect(this.backgrounds);
+        } else {
+            if(this.animate) {
+                this.shaderEffect.animate_effect(this.backgrounds);
+            } else {
+                this.shaderEffect.remove_effect(this.backgrounds);
+            }
+        }
+    },
+
+    _disable: function() {
+        // Disconnect Callbacks
+        this.view.disconnect(this.overview_showing_connection);
+        this.view.disconnect(this.overview_hiding_connection);
+        settings.disconnect(this.setting_changed_connection);
+
+        // Reset UI to its original state
+        this._removeEffect(true);
+        this._injectJS(false);
+    }
+});
 
 function init() {}
 
 function enable() {
-    // Fetch current settings
-    animate = settings.get_boolean("animate");
-    vignette = settings.get_boolean("vignette");
+    blyr = new Blyr();
+}
 
-    overviewInject(vignette);
-
-    // Settings changed listener
-    setting_changed_connection = settings.connect("changed", function(){
-        // If vignette settings changed
-        if(vignette != settings.get_boolean("vignette")) {
-            vignette = settings.get_boolean("vignette");
-            overviewInject(vignette);
-        }
-        // If animation settings changed
-        if(animate != settings.get_boolean("animate")) {
-            // Reset Effect
-            //removeEffect(true);
-            Main.overview.disconnect(overview_hiding_connection);
-            animate = settings.get_boolean("animate");
-            if(animate) {
-                // Overview Hiding listener
-                overview_hiding_connection = Main.overview.connect("hiding", 
-                    function(){
-                    removeEffect(false);
-                });
-            } else {
-                // Overview Hidden listener
-                overview_hiding_connection = Main.overview.connect("hidden", function(){});
-            }
-        }
-    });
-
-    // Overview showing listener
-    overview_showing_connection = Main.overview.connect("showing", function(){
-        applyEffect();
-    });
-
-    monitor_changed_connection = Main.layoutManager.connect('monitors-changed', function(){
-        overviewInject(vignette);
-        // TODO: reset Effects to delete effect array?
-    });
-    
-    if(animate) {
-        // Overview Hiding listener
-        overview_hiding_connection = Main.overview.connect("hiding", function(){
-            removeEffect(false);
-        });
-    } else {
-        // Overview Hidden listener
-        overview_hiding_connection = Main.overview.connect("hidden", function(){
-        });
-    }
+function disable() {
+    blyr._disable();
+    blyr = null;
 };
 
-function disable () {
-    // Disconnect Callbacks
-    Main.overview.disconnect(overview_showing_connection);
-    Main.overview.disconnect(overview_hiding_connection);
-    Main.layoutManager.disconnect(monitor_changed_connection);
-    settings.disconnect(setting_changed_connection);
+//Main.layoutManager.disconnect(monitor_changed_connection);
+//this._removeFromPanel();
 
-    // Reset UI to its original state
-    removeEffect(true);
-    overviewInject(false);
-};
+//this.panel = Main.panel;
+        //this.panelActor = Panel.actor;
+        //this.leftBox = Panel._leftBox;
+        //this.panelBox = Main.layoutManager.panelBox;
 
-function overviewInject(flag){
-    if (flag) {
-        Main.overview._shadeBackgrounds = function(){};
-    } else {
-        Main.overview._shadeBackgrounds = _shadeBackgrounds;
-    }
-}
+//let color = Clutter.color_from_string("#ff0000");
 
-function applyEffect(){
-    backgrounds = view._backgroundGroup.get_children();
+// Get extension path
+/*
+path = Extension.dir.get_child('assets').get_path();
+bg = new Clutter.Texture({
+    filename: path + '/kingscanyon.png',
+    width: 1920,
+    height: 24
+});
 
-    animate = settings.get_boolean("animate");
-    if(animate) {
-        shaderEffect.animate_effect(backgrounds);
-    } else {
-        shaderEffect.apply_effect(backgrounds);
-    }
-}
+bg_actor = new Shell.GenericContainer({
+    name: 'panel-bg',
+    reactive: true,
+    width: 1920,
+    "z-position": -99
+});
+bg_actor = new Clutter.Actor({
+    reactive: true,
+    width: 1920,
+    height: 32,
+    "margin-left": 0,
+    "margin-top": 0,
+    "margin-right": 0,
+    "z-position": -99.9
+});
 
-function removeEffect(reset){
-    backgrounds = view._backgroundGroup.get_children();
-    if(reset) {
-        shaderEffect.remove_effect(backgrounds);
-    } else {
-        animate = settings.get_boolean("animate");
-        if(animate) {
-            shaderEffect.animate_effect(backgrounds);
-        } else {
-            shaderEffect.remove_effect(backgrounds);
-        }
-    }
-}
+bg_actor.add_actor(bg);
+
+panelBox.add_actor(bg_actor);
+//panelActor.add_actor(bg_actor);
+//Panel._updatePanel();
+
+bg_actor.connect('get-preferred-width', Lang.bind(this, this._getPreferredWidth));
+*/
+
+/*
+        monitor_changed_connection = Main.layoutManager.connect('monitors-changed', function(){
+            this._overviewInject(vignette);
+            // TODO: reset Effects to delete effect array?
+        });
+        */
+/*
+        _applyToPanel: function() {
+        this.panelActor.add_effect_with_name("BLUR", new Clutter.BlurEffect());
+    },
+
+    _removeFromPanel: function() {
+        this.panelActor.remove_effect_by_name("BLUR");
+    },
+
+
+    _getPreferredWidth: function(actor, forHeight, alloc) {
+        let primaryMonitor = Main.layoutManager.primaryMonitor;
+
+        alloc.min_size = -1;
+
+        if (primaryMonitor)
+            alloc.natural_size = primaryMonitor.width;
+        else
+            alloc.natural_size = -1;
+    },
+
+    */
