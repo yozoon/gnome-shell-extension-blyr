@@ -42,18 +42,18 @@ const Clutter = imports.gi.Clutter;
 const Shell = imports.gi.Shell;
 const Lang = imports.lang;
 const St = imports.gi.St;
+const Meta = imports.gi.Meta;
 
 const Extension = ExtensionUtils.getCurrentExtension();
 const Effect = Extension.imports.effect;
 const Shared = Extension.imports.shared;
-
 const settings = Shared.getSettings(Shared.SCHEMA_NAME, 
     Extension.dir.get_child('schemas').get_path());
 
-// BlyrExtension instance
-let blyrExtension;
+// Blyr instance
+let blyr;
 
-// Make a "backup" copy of gnome-shell functions
+// Make a "backup" copy of the gnome-shell function
 const _shadeBackgrounds = Main.overview._shadeBackgrounds;
 
 const Blyr = new Lang.Class({
@@ -62,15 +62,19 @@ const Blyr = new Lang.Class({
     _init: function(params) {
         this.shaderEffect = new Effect.ShaderEffect();
         this.view = Main.overview;
+        this.layoutManager = Main.layoutManager;
+        this.primaryMonitor = this.layoutManager.primaryMonitor;
 
         this._fetchSettings();
         this._injectJS(this.vignette);
         this._connectCallbacks();
+        this._panelMagic();
     },
 
     _fetchSettings: function() {
         this.animate = settings.get_boolean("animate");
         this.vignette = settings.get_boolean("vignette");
+        this.radius = settings.get_double("radius");
     },
 
     _connectCallbacks: function() {
@@ -78,11 +82,18 @@ const Blyr = new Lang.Class({
         this.setting_changed_connection = settings.connect("changed", Lang.bind(this, function(){
             let vignette_old = this.vignette;
             let animate_old = this.animate;
+            let radius_old = this.radius;
+
             this._fetchSettings();
 
             // If vignette settings changed
             if(vignette_old != this.vignette) {
                 this._injectJS(this.vignette);
+            }
+
+            if(!(radius_old == this.radius)) {
+                this.panelEffect.remove_effect([this.panel_bg]);
+                this.panelEffect.apply_effect([this.panel_bg]);
             }
             // If animation settings changed
             if(animate_old != this.animate) {
@@ -138,6 +149,42 @@ const Blyr = new Lang.Class({
         }
     },
 
+    _panelMagic: function() {
+        this.panelEffect = new Effect.ShaderEffect();
+
+        this.panelBox = Main.layoutManager.panelBox;
+        this.backgrounds = this.layoutManager._backgroundGroup.get_children();
+        this.primaryIndex = this.layoutManager.primaryIndex;
+
+        this.primaryBackground = this.backgrounds[this.primaryIndex];
+        // Needed to ensure proper positioning behind the panel
+
+        this.bgContainer = new Clutter.Actor({
+            width: this.primaryMonitor.width,
+            height: 0,
+            "z-position": -1
+        });
+
+        // Clone primary background instance
+        this.panel_bg = new Meta.BackgroundActor ({
+            name: "panel_bg",
+            background: this.primaryBackground["background"],
+            "meta-screen": this.primaryBackground["meta-screen"],
+            width: this.primaryMonitor.width,
+            height: this.panelBox.height,
+            y: -1
+        });
+
+        //this.panel_bg.set_size(this.primaryMonitor.width, this.panelBox.height);    
+        this.panelEffect.apply_effect([this.panel_bg]);
+
+        // Add the background texture to the background container
+        this.bgContainer.add_actor(this.panel_bg);
+
+        // Add the background container to the system panel box
+        this.panelBox.add_actor(this.bgContainer);
+    },
+
     _applyEffect: function() {
         this._fetchSettings();
         this.backgrounds = this.view._backgroundGroup.get_children();
@@ -171,6 +218,8 @@ const Blyr = new Lang.Class({
         // Reset UI to its original state
         this._removeEffect(true);
         this._injectJS(false);
+        this.panelEffect.remove_effect([this.panel_bg]);
+        this.panelBox.remove_child(this.bgContainer);
     }
 });
 
@@ -184,76 +233,3 @@ function disable() {
     blyr._disable();
     blyr = null;
 };
-
-//Main.layoutManager.disconnect(monitor_changed_connection);
-//this._removeFromPanel();
-
-//this.panel = Main.panel;
-        //this.panelActor = Panel.actor;
-        //this.leftBox = Panel._leftBox;
-        //this.panelBox = Main.layoutManager.panelBox;
-
-//let color = Clutter.color_from_string("#ff0000");
-
-// Get extension path
-/*
-path = Extension.dir.get_child('assets').get_path();
-bg = new Clutter.Texture({
-    filename: path + '/kingscanyon.png',
-    width: 1920,
-    height: 24
-});
-
-bg_actor = new Shell.GenericContainer({
-    name: 'panel-bg',
-    reactive: true,
-    width: 1920,
-    "z-position": -99
-});
-bg_actor = new Clutter.Actor({
-    reactive: true,
-    width: 1920,
-    height: 32,
-    "margin-left": 0,
-    "margin-top": 0,
-    "margin-right": 0,
-    "z-position": -99.9
-});
-
-bg_actor.add_actor(bg);
-
-panelBox.add_actor(bg_actor);
-//panelActor.add_actor(bg_actor);
-//Panel._updatePanel();
-
-bg_actor.connect('get-preferred-width', Lang.bind(this, this._getPreferredWidth));
-*/
-
-/*
-        monitor_changed_connection = Main.layoutManager.connect('monitors-changed', function(){
-            this._overviewInject(vignette);
-            // TODO: reset Effects to delete effect array?
-        });
-        */
-/*
-        _applyToPanel: function() {
-        this.panelActor.add_effect_with_name("BLUR", new Clutter.BlurEffect());
-    },
-
-    _removeFromPanel: function() {
-        this.panelActor.remove_effect_by_name("BLUR");
-    },
-
-
-    _getPreferredWidth: function(actor, forHeight, alloc) {
-        let primaryMonitor = Main.layoutManager.primaryMonitor;
-
-        alloc.min_size = -1;
-
-        if (primaryMonitor)
-            alloc.natural_size = primaryMonitor.width;
-        else
-            alloc.natural_size = -1;
-    },
-
-    */

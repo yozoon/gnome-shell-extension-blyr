@@ -116,7 +116,11 @@ const ShaderEffect = new Lang.Class({
                 effect[1].set_uniform_value('width', actors[i].get_width());
                 effect[1].set_uniform_value('height', actors[i].get_height());
                 effect[1].set_uniform_value('radius', this.radius);
-                effect[1].set_uniform_value('brightness', this.brightness);
+                if(actors[i].name == "panel_bg") { // Don't dim Panel background, because it already has a semi-transparent overlay
+                    effect[1].set_uniform_value('brightness', 0.9999);
+                } else {
+                    effect[1].set_uniform_value('brightness', this.brightness);
+                }
             } else {
                 effect = this.shader_effect[i];
                 // Horizontal Shader

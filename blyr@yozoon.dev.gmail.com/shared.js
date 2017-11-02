@@ -38,7 +38,7 @@
  
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
-const SCHEMA_NAME = "org.gnome.shell.extensions.blyr";
+var SCHEMA_NAME = "org.gnome.shell.extensions.blyr";
 
 function getSettings(schemaName, schemaDir) {
     // Extension installed in .local
