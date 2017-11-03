@@ -125,7 +125,7 @@ const Blyr = new Lang.Class({
         }));
 
         Main.layoutManager.connect('monitors-changed', Lang.bind(this, function() {
-            // TODO
+            // TODO: Handle change in monitor setup
         }));
 
         // Regenerate blurred panel background when background on primary monitor is changed
@@ -181,9 +181,11 @@ const Blyr = new Lang.Class({
             background: this.primaryBackground["background"],
             "meta-screen": this.primaryBackground["meta-screen"],
             width: this.primaryMonitor.width,
-            height: this.panelBox.height,
-            y: -2
+            height: this.panelBox.height*4, /* Needed to reduce edge darkening caused by high blur radii */
+            y: -1
         });
+
+        this.panel_bg.set_clip(0, 0, this.primaryMonitor.width, this.panelBox.height)
 
         //this.panel_bg.set_size(this.primaryMonitor.width, this.panelBox.height);    
         this.panelEffect.apply_effect([this.panel_bg]);
