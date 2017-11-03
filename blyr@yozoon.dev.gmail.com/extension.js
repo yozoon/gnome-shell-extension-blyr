@@ -75,6 +75,8 @@ const Blyr = new Lang.Class({
         this.animate = settings.get_boolean("animate");
         this.vignette = settings.get_boolean("vignette");
         this.radius = settings.get_double("radius");
+
+        this.primaryIndex = this.layoutManager.primaryIndex;
     },
 
     _connectCallbacks: function() {
@@ -121,6 +123,15 @@ const Blyr = new Lang.Class({
                 }
             }
         }));
+
+        Main.layoutManager.connect('monitors-changed', Lang.bind(this, function() {
+            // TODO
+        }));
+
+        // Regenerate blurred panel background when background on primary monitor is changed
+        Main.layoutManager._bgManagers[this.primaryIndex].connect('changed', Lang.bind(this, function() {
+            this._panelMagic();
+        }));
         
         if(this.animate) {
             // Overview showing listener
@@ -157,12 +168,11 @@ const Blyr = new Lang.Class({
         this.primaryIndex = this.layoutManager.primaryIndex;
 
         this.primaryBackground = this.backgrounds[this.primaryIndex];
-        // Needed to ensure proper positioning behind the panel
 
         this.bgContainer = new Clutter.Actor({
             width: this.primaryMonitor.width,
             height: 0,
-            "z-position": -1
+            "z-position": -1 /* Needed to ensure proper positioning behind the panel */
         });
 
         // Clone primary background instance
@@ -172,7 +182,7 @@ const Blyr = new Lang.Class({
             "meta-screen": this.primaryBackground["meta-screen"],
             width: this.primaryMonitor.width,
             height: this.panelBox.height,
-            y: -1
+            y: -2
         });
 
         //this.panel_bg.set_size(this.primaryMonitor.width, this.panelBox.height);    
