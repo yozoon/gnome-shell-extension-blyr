@@ -116,8 +116,15 @@ const ShaderEffect = new Lang.Class({
                 effect[1].set_uniform_value('width', actors[i].get_width());
                 effect[1].set_uniform_value('height', actors[i].get_height());
                 effect[1].set_uniform_value('radius', this.radius);
-                if(actors[i].name == "panel_bg") { // Don't dim Panel background, because it already has a semi-transparent overlay
-                    effect[1].set_uniform_value('brightness', 0.9999);
+                if(actors[i].name == "panel_bg") {
+                    // The panel overlay reduces the brigtness to 65% of its original value, so we have to factor this in for the panel brightness.
+                    // Until a brightness of 65% the panel will remain darker than the overview screen. 
+                    // For brightness values lower than that we try to match the panel brigthness with the overview screen.
+                    let b = this.brightness/0.65;
+                    if(b > 0.9999) {
+                        b = 0.9999;
+                    }
+                    effect[1].set_uniform_value('brightness', b);
                 } else {
                     effect[1].set_uniform_value('brightness', this.brightness);
                 }

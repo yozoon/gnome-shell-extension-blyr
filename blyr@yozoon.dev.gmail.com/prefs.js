@@ -47,6 +47,7 @@ const Lang = imports.lang;
 const Extension = ExtensionUtils.getCurrentExtension();
 const Shared = Extension.imports.shared;
 const Effect = Extension.imports.effect;
+const Mainloop = imports.mainloop;
 
 const Convenience = Extension.imports.convenience;
 const Gettext = imports.gettext.domain('blyr');
@@ -219,7 +220,15 @@ const BlyrPrefsWidget = new Lang.Class ({
     _init_callbacks: function() {
         this.blur_slider.connect('value-changed', Lang.bind(this, 
             function() {
-                this._interaction(0);
+                if (this.blur_timeout > 0)
+                    Mainloop.source_remove(this.blur_timeout);
+
+                // Delay updating so we don't get overrun by effect updates
+                this.blur_timeout = Mainloop.timeout_add(UPDATE_TIMEOUT, Lang.bind(this, 
+                    function() {
+                        this._interaction(0);
+                        return GLib.SOURCE_REMOVE;
+                    }));
             }));
         this.vignette_sw.connect('notify::active', Lang.bind(this, 
             function() {
@@ -231,7 +240,14 @@ const BlyrPrefsWidget = new Lang.Class ({
             }));
         this.brightness_slider.connect('value-changed', Lang.bind(this, 
             function() {
-                this._interaction(3);
+                if (this.brightness_timeout > 0)
+                    Mainloop.source_remove(this.brightness_timeout);
+                // Delay updating so we don't get overrun by effect updates
+                this.brightness_timeout = Mainloop.timeout_add(UPDATE_TIMEOUT, Lang.bind(this, 
+                    function() {
+                        this._interaction(3);
+                        return GLib.SOURCE_REMOVE;
+                    }));
             }));
         this.animate_sw.connect('notify::active', Lang.bind(this, 
             function() {
