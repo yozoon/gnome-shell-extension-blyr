@@ -38,6 +38,7 @@
  
 const Gtk = imports.gi.Gtk;
 const GLib = imports.gi.GLib;
+const GObject = imports.gi.GObject;
 const Clutter = imports.gi.Clutter;
 const GtkClutter = imports.gi.GtkClutter;
 const ExtensionUtils = imports.misc.extensionUtils;
@@ -52,6 +53,8 @@ const Mainloop = imports.mainloop;
 const Convenience = Extension.imports.convenience;
 const Gettext = imports.gettext.domain('blyr');
 const _ = Gettext.gettext;
+
+const eligibleForPanelBlur = Shared.isEligibleForPanelBlur();
 
 const UPDATE_TIMEOUT = 500;
 
@@ -77,8 +80,42 @@ const BlyrPrefsWidget = new Lang.Class ({
         this.vignette = this._settings.get_boolean("vignette");
         this.dim = this._settings.get_boolean("dim");
         this.animate = this._settings.get_boolean("animate");
+        this.applyto = this._settings.get_string("applyto");
     },
     _buildUI: function() {
+
+        if(eligibleForPanelBlur) {
+            //------------------------------------------------------------------------//
+            // Select label
+            this.select_label = new Gtk.Label({
+                halign : Gtk.Align.START
+            });
+            this.select_label.set_markup("<b>"+_("Apply Effect to")+"</b>");
+
+            // Dropdown menu
+            let listitems = ['activities', 'panel', 'both'];
+            let model = new Gtk.ListStore();
+            model.set_column_types([GObject.TYPE_STRING, GObject.TYPE_STRING]);
+
+            this.combobox = new Gtk.ComboBox({model: model});
+            let renderer = new Gtk.CellRendererText();
+            this.combobox.pack_start(renderer, true);
+            this.combobox.add_attribute(renderer, 'text', 1);
+
+            model.set(model.append(), [0, 1], [listitems[0],_("Activities Screen")]);
+            model.set(model.append(), [0, 1], [listitems[1],_("Panel")]);
+            model.set(model.append(), [0, 1], [listitems[2],_("Activities + Panel")]);
+
+            this.combobox.set_active(listitems.indexOf(this.applyto));
+            
+            this.combobox.connect('changed', Lang.bind(this, function(entry) {
+                let [success, iter] = this.combobox.get_active_iter();
+                if (!success)
+                    return;
+                this._settings.set_string('applyto', model.get_value(iter, 0));
+            }));
+        }
+
         //------------------------------------------------------------------------//
         // Blur label
         let blur_label = new Gtk.Label({
@@ -174,17 +211,21 @@ const BlyrPrefsWidget = new Lang.Class ({
         //------------------------------------------------------------------------//
         // Attach UI elements to Grid
         // attach(actor, column, row, width(colums), height(rows))
-        this.attach(blur_label, 0, 0, 1, 1);
-        this.attach(this.blur_slider, 1, 0, 2, 1);
-        this.attach(this.eventbox, 0, 1, 3, 1);
-        this.attach(vignette_label, 0, 2, 2, 1);
-        this.attach(this.vignette_sw, 2, 2, 1, 1);
-        this.attach(dim_label, 0, 3, 2, 1);
-        this.attach(this.dim_sw, 2, 3, 1, 1);
-        this.attach(brightness_label, 0, 4, 2, 1);
-        this.attach(this.brightness_slider, 1, 4, 2, 1);
-        this.attach(animate_label, 0, 5, 2, 1);
-        this.attach(this.animate_sw, 2, 5    , 1, 1);
+        if(eligibleForPanelBlur) {
+            this.attach(this.select_label, 0, 0, 1, 1);
+            this.attach(this.combobox, 1, 0, 2, 1);
+        }
+        this.attach(blur_label, 0, 1, 1, 1);
+        this.attach(this.blur_slider, 1, 1, 2, 1);
+        this.attach(this.eventbox, 0, 2, 3, 1);
+        this.attach(vignette_label, 0, 3, 2, 1);
+        this.attach(this.vignette_sw, 2, 3, 1, 1);
+        this.attach(dim_label, 0, 4, 2, 1);
+        this.attach(this.dim_sw, 2, 4, 1, 1);
+        this.attach(brightness_label, 0, 5, 2, 1);
+        this.attach(this.brightness_slider, 1, 5, 2, 1);
+        this.attach(animate_label, 0, 6, 2, 1);
+        this.attach(this.animate_sw, 2, 6, 1, 1);
     },
     _interaction: function(state) {
         switch(state) {

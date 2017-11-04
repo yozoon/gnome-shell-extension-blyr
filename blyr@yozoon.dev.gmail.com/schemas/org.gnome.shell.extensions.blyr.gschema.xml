@@ -22,6 +22,11 @@
       <summary>Brightness value</summary>
       <description>Sets the brightness of the Overview background</description>
     </key>
+    <key type="s" name="applyto">
+      <default>'activities'</default>
+      <summary>Selects UI elements</summary>
+      <description>Selects the UI elements to get a blurred background</description>
+    </key>
     <key type="b" name="animate">
       <default>false</default>
       <summary>Animate Overview transition</summary>

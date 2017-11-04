@@ -54,7 +54,7 @@ const settings = Shared.getSettings(Shared.SCHEMA_NAME,
 const ANIMATION_TIME_MS = 200;
 const ANIMATION_STEPS = 10;
 
-const ShaderEffect = new Lang.Class({
+var ShaderEffect = new Lang.Class({
     Name : 'ShaderEffect',
 
     _init : function() {

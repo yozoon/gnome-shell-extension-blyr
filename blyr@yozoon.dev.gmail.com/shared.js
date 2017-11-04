@@ -38,6 +38,12 @@
  
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
+const Config = imports.misc.config;
+
+const ACTIVITIES_ONLY = 'activities';
+const PANEL_ONLY = 'panel';
+const BLUR_BOTH = 'both';
+
 var SCHEMA_NAME = "org.gnome.shell.extensions.blyr";
 
 function getSettings(schemaName, schemaDir) {
@@ -50,4 +56,22 @@ function getSettings(schemaName, schemaDir) {
 
         return new Gio.Settings({ settings_schema: schema });
     }
+}
+
+// Check Gnome shell version
+function checkShellVersion() {
+    let shell_array = Config.PACKAGE_VERSION.split(".");
+    let shell_version = shell_array[0] + shell_array[1]; // Don't include subversions
+    return shell_version;
+}
+
+function isEligibleForPanelBlur() {
+	let shell_version = checkShellVersion();
+	let eligible;
+	if(shell_version >= 326) {
+        eligible = true;
+    } else {
+        eligible = false;
+    }
+    return eligible;
 }

@@ -44,13 +44,13 @@ const Lang = imports.lang;
 const St = imports.gi.St;
 const Meta = imports.gi.Meta;
 
-const Config = imports.misc.config;
-
 const Extension = ExtensionUtils.getCurrentExtension();
 const Effect = Extension.imports.effect;
 const Shared = Extension.imports.shared;
 const settings = Shared.getSettings(Shared.SCHEMA_NAME, 
     Extension.dir.get_child('schemas').get_path());
+
+const eligibleForPanelBlur = Shared.isEligibleForPanelBlur();
 
 // Blyr instance
 let blyr;
@@ -67,17 +67,12 @@ const Blyr = new Lang.Class({
 
         this._fetchSettings();
 
-        // Check gnome shell version
-        let shell_array = Config.PACKAGE_VERSION.split(".");
-        let shell_version = shell_array[0] + shell_array[1]; // Don't include subversions
-        if(shell_version >= 326) {
-            this.eligibleForPanelBlur = true;
+        if(eligibleForPanelBlur)
             this._panelMagic();
-        } else {
-            this.eligibleForPanelBlur = false;
-        }
 
-        this._injectJS(this.vignette);
+        if(this.applyto != Shared.PANEL_ONLY)
+            this._injectJS(this.vignette);
+
         this._connectCallbacks();
     },
 
@@ -86,6 +81,7 @@ const Blyr = new Lang.Class({
         this.vignette = settings.get_boolean("vignette");
         this.radius = settings.get_double("radius");
         this.brightness = settings.get_double("brightness");
+        this.applyto = settings.get_string("applyto");
     },
 
     _connectCallbacks: function() {
@@ -98,7 +94,7 @@ const Blyr = new Lang.Class({
             this.primaryMonitor = Main.layoutManager.primaryMonitor;
             this.primaryIndex = Main.layoutManager.primaryIndex;
 
-            if(this.eligibleForPanelBlur) {
+            if(eligibleForPanelBlur) {
                 // Reconnect the background changed listener, because it was disconnected during the monitor setup change 
                 this.bg_changed_connection = Main.layoutManager._bgManagers[this.primaryIndex].connect('changed', Lang.bind(this, this._panelMagic));
 
@@ -109,7 +105,7 @@ const Blyr = new Lang.Class({
             // TODO: The overview blur instances should also be updated when there is a change in the monitor setup
         }));
         
-        if(this.eligibleForPanelBlur) {
+        if(eligibleForPanelBlur) {
             // Regenerate blurred panel background when background on primary monitor is changed
             this.primaryIndex = Main.layoutManager.primaryIndex;
             this.bg_changed_connection = Main.layoutManager._bgManagers[this.primaryIndex].connect('changed', Lang.bind(this, this._panelMagic));
@@ -120,24 +116,24 @@ const Blyr = new Lang.Class({
     },
 
     _settingsChanged: function() {
-        // Backup settings to 
-        let vignette_old = this.vignette;
+        // Backup settings state to register differences
         let animate_old = this.animate;
-        let radius_old = this.radius;
-        let brightness_old = this.brightness;
 
         // Get updated settings
         this._fetchSettings();
-
-        // If vignette settings changed
-        if(vignette_old != this.vignette) {
-            this._injectJS(this.vignette);
-        }
+        
+        this._injectJS(this.vignette);
 
         // Update blurred panel background
-        if(this.eligibleForPanelBlur) {
+        if(eligibleForPanelBlur) {
+            if(this.applyto == Shared.ACTIVITIES_ONLY && this.bgContainer != undefined) {
+                this.panelBox.remove_child(this.bgContainer);
+            }
             this._panelMagic();
         }
+
+        if(this.applyto == Shared.PANEL_ONLY)
+            this._injectJS(false);
 
         // If animation settings changed
         if(animate_old != this.animate) {
@@ -183,6 +179,10 @@ const Blyr = new Lang.Class({
 
     // TODO: add screensaver callback (disable blurred panel background on screenshield and login screen after suspend)
     _panelMagic: function() {
+
+        if(this.applyto == Shared.ACTIVITIES_ONLY)
+            return;
+
         // Get primary monitor and its index
         this.primaryMonitor = Main.layoutManager.primaryMonitor;
         this.primaryIndex = Main.layoutManager.primaryIndex;
@@ -199,7 +199,7 @@ const Blyr = new Lang.Class({
         this.panelEffect = new Effect.ShaderEffect();
 
         // Remove panel background if it's already attached
-        if(this.panelBox.get_n_children() > 1) {
+        if(this.panelBox.get_n_children() > 1 && this.bgContainer != undefined) {
             this.panelBox.remove_child(this.bgContainer);
         }
 
@@ -235,6 +235,10 @@ const Blyr = new Lang.Class({
 
     _applyEffect: function() {
         this._fetchSettings();
+
+        if(this.applyto == Shared.PANEL_ONLY)
+            return;
+
         // Get the overview background actors
         this.backgrounds = Main.overview._backgroundGroup.get_children();
         if(this.animate) {
@@ -246,6 +250,10 @@ const Blyr = new Lang.Class({
 
     _removeEffect: function(reset) {
         this._fetchSettings();
+
+        if(this.applyto == Shared.PANEL_ONLY)
+            return;
+
         // Get the overview background actors
         this.backgrounds = Main.overview._backgroundGroup.get_children();
         if(reset) {
@@ -270,7 +278,7 @@ const Blyr = new Lang.Class({
         this._removeEffect(true);
         this._injectJS(false);
 
-        if(this.eligibleForPanelBlur) {
+        if(eligibleForPanelBlur) {
             // Disconnect the background change listener
             Main.layoutManager._bgManagers[this.primaryIndex].disconnect(this.bg_changed_connection);
             // Remove blurred panel background
