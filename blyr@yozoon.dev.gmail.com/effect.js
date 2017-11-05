@@ -54,6 +54,43 @@ const settings = Shared.getSettings(Shared.SCHEMA_NAME,
 const ANIMATION_TIME_MS = 200;
 const ANIMATION_STEPS = 10;
 
+var BlurEffect = new Lang.Class({
+    Name : 'BlurEffect',
+    Extends: Clutter.ShaderEffect,
+
+    _init: function(width, height, direction, intensity) {
+        // Initialize the parent instance
+        this.parent({shader_type: Clutter.ShaderType.FRAGMENT_SHADER});
+
+        // Read shader and set it as source
+        this.SHADER = this._readShaderFile(Extension.dir.get_path() 
+            + "/shader.glsl");
+        this.set_shader_source(this.SHADER);
+
+        // Set shader values
+        this.set_uniform_value('dir', direction);
+        this.set_uniform_value('width', width);
+        this.set_uniform_value('height', height);
+        this.set_uniform_value('radius', intensity);
+        this.set_uniform_value('brightness', 0.9999);
+
+        return this;
+    },
+
+    // Source: https://stackoverflow.com/a/21146281
+    _readShaderFile : function(filename) {
+        let input_file = Gio.file_new_for_path(filename);
+        let size = input_file.query_info(
+            "standard::size",
+            Gio.FileQueryInfoFlags.NONE,
+            null).get_size();
+        let stream = input_file.read(null);
+        let data = stream.read_bytes(size, null).get_data();
+        stream.close(null);
+        return data.toString();
+    },
+});
+
 var ShaderEffect = new Lang.Class({
     Name : 'ShaderEffect',
 
@@ -151,87 +188,6 @@ var ShaderEffect = new Lang.Class({
             if(!actors[i].get_effect("vertical_blur"))
                 actors[i].add_effect_with_name("vertical_blur", this.shader_effect[i][1]);
         }
-    },
-
-    _animate_shaders : function(actors) {
-        let t_radius, t_brightness, flag, effect;
-        let r_inc = this.radius / ANIMATION_STEPS;
-        let b_inc = (1.0 - this.brightness) / ANIMATION_STEPS;
-
-        // Test if the effect is applied on the primary display
-        let effect_active = actors[0].get_effect('horizontal_blur') && actors[0].get_effect('vertical_blur');
-        if(effect_active) {
-            t_radius = this.radius;
-            t_brightness = this.brightness;
-            flag = false;
-        } else {
-            t_radius = 0.0;
-            t_brightness = 0.9999;
-            flag = true;
-        }
-
-        let shader_effect = this.shader_effect;
-        let count = 0;
-
-        for(let i = 0; i < actors.length; i++) {
-            // Clear Effect
-            if(actors[i].get_effect("horizontal_blur"))
-                actors[i].remove_effect_by_name("horizontal_blur");
-            if(actors[i].get_effect("vertical_blur"))
-                actors[i].remove_effect_by_name("vertical_blur");
-            // Update Shader Values
-            shader_effect[i][0].set_uniform_value('radius', t_radius + 0.0001);
-            shader_effect[i][0].set_uniform_value('brightness', 0.9999);
-            shader_effect[i][1].set_uniform_value('radius', t_radius + 0.0001);
-            shader_effect[i][1].set_uniform_value('brightness', t_brightness + 0.0001);
-            // Add Effect
-            if(!actors[i].get_effect("horizontal_blur"))
-                actors[i].add_effect_with_name("horizontal_blur", shader_effect[i][0]);
-            if(!actors[i].get_effect("vertical_blur"))
-                actors[i].add_effect_with_name("vertical_blur", shader_effect[i][1]);
-        }
-
-        GLib.timeout_add(GLib.PRIORITY_HIGH, ANIMATION_TIME_MS / ANIMATION_STEPS, function() {
-            if(flag) {
-                if(count < ANIMATION_STEPS) {
-                    for(let i = 0; i < actors.length; i++) {
-                        // Update Shader Values
-                        shader_effect[i][0].set_uniform_value('radius', t_radius + 0.0001);
-                        shader_effect[i][0].set_uniform_value('brightness', 0.9999);
-                        shader_effect[i][1].set_uniform_value('radius', t_radius + 0.0001);
-                        shader_effect[i][1].set_uniform_value('brightness', t_brightness + 0.0001);
-                    }
-
-                    t_radius += r_inc;
-                    t_brightness -= b_inc;
-                    count++;
-                    return true; // Repeat
-                }
-            } else {
-                if(count < ANIMATION_STEPS) {
-                    for(let i = 0; i < actors.length; i++) {
-                        // Update Shader Values
-                        shader_effect[i][0].set_uniform_value('radius', t_radius + 0.0001);
-                        shader_effect[i][0].set_uniform_value('brightness', 0.9999);
-                        shader_effect[i][1].set_uniform_value('radius', t_radius + 0.0001);
-                        shader_effect[i][1].set_uniform_value('brightness', t_brightness + 0.0001);
-                    }
-
-                    t_radius -= r_inc;
-                    t_brightness += b_inc;
-                    count++;
-                    return true; // Repeat
-                }
-                // Remove Effect when finished
-                for(let i = 0; i < actors.length; i++) {
-                    if(actors[i].get_effect("horizontal_blur"))
-                        actors[i].remove_effect_by_name("horizontal_blur");
-                    if(actors[i].get_effect("vertical_blur"))
-                        actors[i].remove_effect_by_name("vertical_blur");
-                }
-            }
-            return false; // Don't repeat
-        });
     },
 
     apply_effect : function(actors) {

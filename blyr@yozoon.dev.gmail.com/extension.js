@@ -58,6 +58,17 @@ let blyr;
 // Make a "backup" copy of the gnome-shell function we are going to overwrite
 const _shadeBackgrounds = Main.overview._shadeBackgrounds;
 
+const AdvancedBackground = new Lang.Class({
+    Name: 'AdvancedBackground',
+    Extends: Meta.BackgroundActor,
+
+    _init: function(params) {
+        this.parent(params);
+        log("test");
+        return this;
+    }
+});
+
 const Blyr = new Lang.Class({
     Name: 'Blyr',
 
@@ -233,6 +244,23 @@ const Blyr = new Lang.Class({
         this.panelBox.add_actor(this.bgContainer);
     },
 
+    _applyTwoPassBlur: function(actor) {
+        if(actor.has_effects) {
+            actor.clear_effects();
+        }
+        log(actor.width);
+        log("applying...");
+        actor.add_effect_with_name('vertical_blur', new Effect.BlurEffect(actor.width, actor.height, 0, 10.001));
+        actor.add_effect_with_name('horizontal_blur', new Effect.BlurEffect(actor.width, actor.height, 1, 10.001));
+        log("done!");
+    },
+
+    _removeTwoPassBlur: function(actor) {
+        if(actor.has_effects) {
+            actor.clear_effects();
+        }
+    },
+
     _applyEffect: function() {
         this._fetchSettings();
 
@@ -240,12 +268,31 @@ const Blyr = new Lang.Class({
             return;
 
         // Get the overview background actors
-        this.backgrounds = Main.overview._backgroundGroup.get_children();
+        Main.overview._backgroundGroup.get_children().forEach(function(actor) {
+            this._applyTwoPassBlur(actor);
+        }, this);
+        
+
+        let bg = Main.overview._backgroundGroup.get_children()[0];
+
+        let advancedBackground = new AdvancedBackground({
+            name: bg["name"],
+            background: bg["background"],
+            "meta-screen": bg["meta-screen"],
+            width: bg["width"],
+            height: bg["height"],
+            monitor: bg["monitor"],
+            x: bg["x"],
+            y: bg["y"]
+        });
+
+
+        /*
         if(this.animate) {
-            this.shaderEffect.animate_effect(this.backgrounds);
+            this.shaderEffect.apply_effect(this.backgrounds);
         } else {
             this.shaderEffect.apply_effect(this.backgrounds);
-        }
+        }*/
     },
 
     _removeEffect: function(reset) {
@@ -255,16 +302,21 @@ const Blyr = new Lang.Class({
             return;
 
         // Get the overview background actors
-        this.backgrounds = Main.overview._backgroundGroup.get_children();
+        Main.overview._backgroundGroup.get_children().forEach(function(actor) {
+            this._removeTwoPassBlur(actor);
+        }, this);
+
+        /*
         if(reset) {
             this.shaderEffect.remove_effect(this.backgrounds);
         } else {
             if(this.animate) {
-                this.shaderEffect.animate_effect(this.backgrounds);
+                this.shaderEffect.apply_effect(this.backgrounds);
             } else {
                 this.shaderEffect.remove_effect(this.backgrounds);
             }
         }
+        */
     },
 
     _disable: function() {
