@@ -251,7 +251,11 @@ const BlyrPrefsWidget = new Lang.Class ({
                 this._settings.set_boolean("animate", this.animate_sw.active);
                 break;
             case 5:
-                this.shaderEffect.animate_effect(this.texture);
+                if(this.texture[0].has_effects()) {
+                    this.shaderEffect.remove_effect(this.texture);
+                } else {
+                    this.shaderEffect.apply_effect(this.texture);
+                }
                 return;
         }
 
