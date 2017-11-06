@@ -43,6 +43,7 @@ const Shell = imports.gi.Shell;
 const Lang = imports.lang;
 const St = imports.gi.St;
 const Meta = imports.gi.Meta;
+const Tweener = imports.ui.tweener;
 
 const Extension = ExtensionUtils.getCurrentExtension();
 const Effect = Extension.imports.effect;
@@ -64,7 +65,6 @@ const AdvancedBackground = new Lang.Class({
 
     _init: function(params) {
         this.parent(params);
-        log("test");
         return this;
     }
 });
@@ -166,7 +166,7 @@ const Blyr = new Lang.Class({
             }));
             // Overview Hiding listener
             this.overview_hiding_connection = Main.overview.connect("hiding", Lang.bind(this, function(){
-                this._removeEffect(false);
+                this._removeEffect();
             }));
         } else {
             // Blur Overview in advance
@@ -188,7 +188,6 @@ const Blyr = new Lang.Class({
         }
     },
 
-    // TODO: add screensaver callback (disable blurred panel background on screenshield and login screen after suspend)
     _panelMagic: function() {
 
         if(this.applyto == Shared.ACTIVITIES_ONLY)
@@ -245,19 +244,41 @@ const Blyr = new Lang.Class({
     },
 
     _applyTwoPassBlur: function(actor) {
-        if(actor.has_effects) {
-            actor.clear_effects();
+        // Only fade the 
+        if(actor["z-position"] == -1) {
+            actor.set_opacity(255);
+            if(!actor.get_effect("vertical_blur"))
+                actor.add_effect_with_name('vertical_blur', new Effect.BlurEffect(actor.width, actor.height, 0, this.radius, this.brightness));
+            if(!actor.get_effect("horizontal_blur"))
+                actor.add_effect_with_name('horizontal_blur', new Effect.BlurEffect(actor.width, actor.height, 1, this.radius, this.brightness));
+        } else {
+            actor.set_opacity(255);
+            Tweener.addTween(actor, 
+            {
+                opacity: 0,
+                time: 0.5,
+                transition: 'easeOutQuad',
+                onComplete: Lang.bind(this, function() {
+                    log("complete shade");
+                })
+            });
         }
-        log(actor.width);
-        log("applying...");
-        actor.add_effect_with_name('vertical_blur', new Effect.BlurEffect(actor.width, actor.height, 0, 10.001));
-        actor.add_effect_with_name('horizontal_blur', new Effect.BlurEffect(actor.width, actor.height, 1, 10.001));
-        log("done!");
     },
 
     _removeTwoPassBlur: function(actor) {
-        if(actor.has_effects) {
-            actor.clear_effects();
+        if(actor["z-position"] == -1) {
+            actor.set_opacity(255);
+        } else {
+            actor.set_opacity(0);
+            Tweener.addTween(actor, 
+            {
+                opacity: 255,
+                time: 0.5,
+                transition: 'easeOutQuad',
+                onComplete: Lang.bind(this, function() {
+                    log("complete unshade");
+                })
+            });
         }
     },
 
@@ -267,26 +288,33 @@ const Blyr = new Lang.Class({
         if(this.applyto == Shared.PANEL_ONLY)
             return;
 
+        let advancedBackground;
+
+        if(advancedBackground == undefined) {
+            let bg = Main.overview._backgroundGroup.get_children()[0];
+
+            advancedBackground = new AdvancedBackground({
+                name: bg["name"],
+                background: bg["background"],
+                "meta-screen": bg["meta-screen"],
+                width: bg["width"],
+                height: bg["height"],
+                monitor: bg["monitor"],
+                x: bg["x"],
+                y: bg["y"],
+                "z-position": -1
+            });
+        }
+
+        if(Main.overview._backgroundGroup.get_children().length == 1)
+            Main.overview._backgroundGroup.add_child(advancedBackground);
+
         // Get the overview background actors
         Main.overview._backgroundGroup.get_children().forEach(function(actor) {
             this._applyTwoPassBlur(actor);
         }, this);
-        
 
-        let bg = Main.overview._backgroundGroup.get_children()[0];
-
-        let advancedBackground = new AdvancedBackground({
-            name: bg["name"],
-            background: bg["background"],
-            "meta-screen": bg["meta-screen"],
-            width: bg["width"],
-            height: bg["height"],
-            monitor: bg["monitor"],
-            x: bg["x"],
-            y: bg["y"]
-        });
-
-
+        log(Main.overview._backgroundGroup.get_children().length);
         /*
         if(this.animate) {
             this.shaderEffect.apply_effect(this.backgrounds);
@@ -350,3 +378,15 @@ function disable() {
     blyr._disable();
     blyr = null;
 };
+
+/*
+Tweener.addTween(texture, 
+{
+    time: 0.4,
+    transition: 'easeInOutExpo',
+    opacity: 255,
+    onComplete: Lang.bind(this, function() {
+        log("complete");
+    })
+});
+*/

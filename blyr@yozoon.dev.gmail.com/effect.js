@@ -41,6 +41,7 @@ const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const Clutter = imports.gi.Clutter;
 const GObject = imports.gi.GObject;
+const Tweener = imports.tweener.tweener;
 
 
 const ExtensionUtils = imports.misc.extensionUtils;
@@ -58,7 +59,7 @@ var BlurEffect = new Lang.Class({
     Name : 'BlurEffect',
     Extends: Clutter.ShaderEffect,
 
-    _init: function(width, height, direction, intensity) {
+    _init: function(width, height, direction, intensity, brightness) {
         // Initialize the parent instance
         this.parent({shader_type: Clutter.ShaderType.FRAGMENT_SHADER});
 
@@ -72,7 +73,7 @@ var BlurEffect = new Lang.Class({
         this.set_uniform_value('width', width);
         this.set_uniform_value('height', height);
         this.set_uniform_value('radius', intensity);
-        this.set_uniform_value('brightness', 0.9999);
+        this.set_uniform_value('brightness', brightness);
 
         return this;
     },
