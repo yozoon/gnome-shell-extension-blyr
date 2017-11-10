@@ -72,10 +72,15 @@ var BlurEffect = new Lang.Class({
         this.set_uniform_value('dir', direction);
         this.set_uniform_value('width', width);
         this.set_uniform_value('height', height);
-        this.set_uniform_value('radius', intensity);
-        this.set_uniform_value('brightness', brightness);
+        this.set_uniform_value('radius', intensity + 0.0001);
+        this.set_uniform_value('brightness', brightness + 0.0001);
 
         return this;
+    },
+
+    updateUniforms: function(intensity, brightness) {
+        this.set_uniform_value('radius', intensity + 0.0001);
+        this.set_uniform_value('brightness', brightness + 0.0001);
     },
 
     // Source: https://stackoverflow.com/a/21146281
