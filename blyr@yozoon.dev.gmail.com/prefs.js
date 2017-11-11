@@ -61,6 +61,7 @@ const UPDATE_TIMEOUT = 500;
 const BlyrPrefsWidget = new Lang.Class ({
     Name: 'BlyrPrefsWidget',
     Extends: Gtk.Grid,
+
     _init: function() {
         this.parent({
             margin: 15, 
@@ -74,6 +75,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         this._buildUI();
         this._init_callbacks();
     },
+
     _get_settings: function() {
         this.radius = this._settings.get_double("radius");
         this.brightness = this._settings.get_double("brightness");
@@ -82,6 +84,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         this.animate = this._settings.get_boolean("animate");
         this.applyto = this._settings.get_string("applyto");
     },
+
     _buildUI: function() {
 
         if(eligibleForPanelBlur) {
@@ -227,6 +230,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         this.attach(animate_label, 0, 6, 2, 1);
         this.attach(this.animate_sw, 2, 6, 1, 1);
     },
+
     _interaction: function(state) {
         switch(state) {
             case 0:
@@ -262,6 +266,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         // Update effect with new values
         this.shaderEffect.apply_effect(this.texture);
     },
+    
     _init_callbacks: function() {
         this.blur_slider.connect('value-changed', Lang.bind(this, 
             function() {

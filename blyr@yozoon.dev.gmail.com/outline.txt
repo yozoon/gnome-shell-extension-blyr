@@ -23,19 +23,34 @@ Monitor setup changed
 Gnome session changed (e.g. wake from hibernate)	
 --> Regenerate overview backgrounds and panel background
 Settings changed
---> What mode did the user select?
-	panel_only: What mode were we in?
-		panel_only: do nothing
-		activities_only: remove blurred activities actors, restore vignette effect, unregister callbacks for overview showing/ hiding, generate panel blur actor
-		both: remove blurred activities actors, restore vignette effect, unregister callbacks for overview showing/ hiding
-	activities_only: What mode were we in?
-		panel_only: remove blurred panel actor, remove vignette effect
-		activities_only: do nothing
-		both: remove blurred panel actor
-	both: What mode were we in?
-		panel_only:
-		activities_only:
-		both:			
+--> What mode were we in?
+	1 panel_only: What mode did the user select?
+		2 activities_only: 
+			- remove blurred panel actor
+			- disable vignette effect 
+			- generate overview background actors
+			- register callbacks for overview showing/ hiding
+		3 both: 
+			- disable vignette effect 
+			- generate overview background actors
+			- register callbacks for overview showing/ hiding
+	2 activities_only: What mode did the user select?
+		1 panel_only: 
+			- remove blurred overview background actors
+			- restore vignette effect
+			- generate blurred panel actor
+			- unregister callbacks for overview showing/ hiding
+		3 both:
+			- generate blurred panel actor
+	3 both: What mode did the user select?
+		1 panel_only: 
+			- remove blurred activities actors
+			- restore vignette effect
+			- unregister callbacks for overview showing/ hiding
+		2 activities_only:
+			- remove blurred panel actor
+
+
 
 	(possible switch case with old state (1,2 or 3) * 10 plus new state)
 
@@ -46,3 +61,17 @@ Overview showing
 Overview hiding			
 --> Start tweening for each background (front background opacity: 0 -> 255)
 
+
+
+
+
+
+
+
+
+/*
+In tweener:
+onComplete: Lang.bind(this, function() {
+                    log("complete shade");
+                })
+                */

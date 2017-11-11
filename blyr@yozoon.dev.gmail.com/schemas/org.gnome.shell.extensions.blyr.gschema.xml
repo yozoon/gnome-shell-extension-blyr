@@ -2,12 +2,12 @@
 <schemalist>
   <schema path="/org/gnome/shell/extensions/blyr/" id="org.gnome.shell.extensions.blyr">
     <!-- Blur -->
-    <key type="d" name="radius">
+    <key type="d" name="intensity">
       <default>10.0</default>
-      <summary>Blur radius</summary>
+      <summary>Blur intensity</summary>
       <description>Influences the blur effect strenght</description>
     </key>
-    <key type="b" name="vignette">
+    <key type="b" name="disable_vignette">
       <default>true</default>
       <summary>Enable or disable the Overview Vignette Effect</summary>
       <description>Enable or disable the Overview Vignette Effect</description>
@@ -22,15 +22,10 @@
       <summary>Brightness value</summary>
       <description>Sets the brightness of the Overview background</description>
     </key>
-    <key type="s" name="applyto">
-      <default>'activities'</default>
+    <key type="i" name="mode">
+      <default>2</default>
       <summary>Selects UI elements</summary>
-      <description>Selects the UI elements to get a blurred background</description>
-    </key>
-    <key type="b" name="animate">
-      <default>false</default>
-      <summary>Animate Overview transition</summary>
-      <description>Animate Overview transition</description>
+      <description>Selects the UI elements to get a blurred background; 1 = panel_only, 2 = activities_only, 3 = blur_both</description>
     </key>
   </schema>
 </schemalist>
