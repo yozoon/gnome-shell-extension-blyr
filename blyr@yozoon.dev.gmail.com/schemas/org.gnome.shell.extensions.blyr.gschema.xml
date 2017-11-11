@@ -7,11 +7,6 @@
       <summary>Blur intensity</summary>
       <description>Influences the blur effect strenght</description>
     </key>
-    <key type="b" name="disable_vignette">
-      <default>true</default>
-      <summary>Enable or disable the Overview Vignette Effect</summary>
-      <description>Enable or disable the Overview Vignette Effect</description>
-    </key>
     <key type="b" name="dim">
       <default>true</default>
       <summary>Enable or disable dimming with the blur shader</summary>
@@ -25,7 +20,7 @@
     <key type="i" name="mode">
       <default>2</default>
       <summary>Selects UI elements</summary>
-      <description>Selects the UI elements to get a blurred background; 1 = panel_only, 2 = activities_only, 3 = blur_both</description>
+      <description>Selects the UI elements to get a blurred background; 1 = panel-only, 2 = activities-only, 3 = blur-both</description>
     </key>
   </schema>
 </schemalist>

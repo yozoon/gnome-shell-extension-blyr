@@ -70,23 +70,19 @@ const BlyrPrefsWidget = new Lang.Class ({
         });
         this._settings = Shared.getSettings(Shared.SCHEMA_NAME, 
             Extension.dir.get_child('schemas').get_path());
-        this.shaderEffect = new Effect.ShaderEffect();
         this._get_settings();
         this._buildUI();
         this._init_callbacks();
     },
 
     _get_settings: function() {
-        this.radius = this._settings.get_double("radius");
+        this.mode = this._settings.get_int("mode");
+        this.intensity = this._settings.get_double("intensity");
         this.brightness = this._settings.get_double("brightness");
-        this.vignette = this._settings.get_boolean("vignette");
         this.dim = this._settings.get_boolean("dim");
-        this.animate = this._settings.get_boolean("animate");
-        this.applyto = this._settings.get_string("applyto");
     },
 
     _buildUI: function() {
-
         if(eligibleForPanelBlur) {
             //------------------------------------------------------------------------//
             // Select label
@@ -96,7 +92,7 @@ const BlyrPrefsWidget = new Lang.Class ({
             this.select_label.set_markup("<b>"+_("Apply Effect to")+"</b>");
 
             // Dropdown menu
-            let listitems = ['activities', 'panel', 'both'];
+            this.listitems = ['activities', 'panel', 'both'];
             let model = new Gtk.ListStore();
             model.set_column_types([GObject.TYPE_STRING, GObject.TYPE_STRING]);
 
@@ -105,17 +101,19 @@ const BlyrPrefsWidget = new Lang.Class ({
             this.combobox.pack_start(renderer, true);
             this.combobox.add_attribute(renderer, 'text', 1);
 
-            model.set(model.append(), [0, 1], [listitems[0],_("Activities Screen")]);
-            model.set(model.append(), [0, 1], [listitems[1],_("Panel")]);
-            model.set(model.append(), [0, 1], [listitems[2],_("Activities + Panel")]);
+            model.set(model.append(), [0, 1], [this.listitems[0],_("Panel")]);
+            model.set(model.append(), [0, 1], [this.listitems[1],_("Activities Screen")]);
+            model.set(model.append(), [0, 1], [this.listitems[2],_("Activities + Panel")]);
 
-            this.combobox.set_active(listitems.indexOf(this.applyto));
+            this.combobox.set_active(this.mode - 1); // I know... the problems of starting the index with 1
             
             this.combobox.connect('changed', Lang.bind(this, function(entry) {
                 let [success, iter] = this.combobox.get_active_iter();
                 if (!success)
                     return;
-                this._settings.set_string('applyto', model.get_value(iter, 0));
+                this.mode = this.listitems.indexOf(model.get_value(iter, 0)) + 1;
+                log(this.mode);
+                this._settings.set_int('mode', this.mode);
             }));
         }
 
@@ -124,12 +122,12 @@ const BlyrPrefsWidget = new Lang.Class ({
         let blur_label = new Gtk.Label({
             halign : Gtk.Align.START
         });
-        blur_label.set_markup("<b>"+_("Blur Radius")+"</b>");
+        blur_label.set_markup("<b>"+_("Blur intensity")+"</b>");
 
         // Blur slider
         this.blur_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,
             1.0,29.9,0.1);
-        this.blur_slider.set_value(this.radius);
+        this.blur_slider.set_value(this.intensity);
 
         //------------------------------------------------------------------------//
         // Effect Preview
@@ -142,31 +140,18 @@ const BlyrPrefsWidget = new Lang.Class ({
         let path = Extension.dir.get_child('assets').get_path();
 
         // Create Clutter.Texture from image
-        this.texture = [];
-        this.texture[0] = new Clutter.Texture({
+        this.texture = new Clutter.Texture({
             filename: path + '/kingscanyon.png',
             width : 600
         });
 
         // Apply blur
-        this.shaderEffect.apply_effect(this.texture);
+        this.vertical_blur = new Effect.BlurEffect(this.texture.width, this.texture.height, 0, this.intensity, this.brightness);
+        this.horizontal_blur = new Effect.BlurEffect(this.texture.width, this.texture.height, 1, this.intensity, this.brightness);
+        this.texture.add_effect_with_name('vertical_blur', this.vertical_blur);
+        this.texture.add_effect_with_name('vertical_blur', this.horizontal_blur);
         let stage = embed.get_stage();
-        stage.add_child(this.texture[0]);
-
-        //------------------------------------------------------------------------//
-        // Vignette label
-        let vignette_label = new Gtk.Label({
-            halign : Gtk.Align.START
-        });
-        vignette_label.set_markup("<b>"+_("Disable Overview Vignette Effect")+"</b>");
-
-        // Vignette switch
-        this.vignette_sw = new Gtk.Switch({
-            name : "Disable Overview Vignette Effect",
-            active : this._settings.get_boolean("vignette"),
-            halign : Gtk.Align.END,
-            valign : Gtk.Align.START
-        });
+        stage.add_child(this.texture);
 
         //------------------------------------------------------------------------//
         // Dim label
@@ -195,23 +180,6 @@ const BlyrPrefsWidget = new Lang.Class ({
         this.brightness_slider.set_value(this.brightness);
 
         //------------------------------------------------------------------------//
-
-        // Animation label
-        var animate_label = new Gtk.Label({
-            halign : Gtk.Align.START
-        });
-        animate_label.set_markup(
-            "<b>"+_("Animate Overview transition (experimental)")+"</b>");
-
-        // Animation switch
-        this.animate_sw = new Gtk.Switch({
-            name : "Animate Overview transition",
-            active : this._settings.get_boolean("animate"),
-            halign : Gtk.Align.END,
-            valign : Gtk.Align.START
-        });
-
-        //------------------------------------------------------------------------//
         // Attach UI elements to Grid
         // attach(actor, column, row, width(colums), height(rows))
         if(eligibleForPanelBlur) {
@@ -221,52 +189,49 @@ const BlyrPrefsWidget = new Lang.Class ({
         this.attach(blur_label, 0, 1, 1, 1);
         this.attach(this.blur_slider, 1, 1, 2, 1);
         this.attach(this.eventbox, 0, 2, 3, 1);
-        this.attach(vignette_label, 0, 3, 2, 1);
-        this.attach(this.vignette_sw, 2, 3, 1, 1);
         this.attach(dim_label, 0, 4, 2, 1);
         this.attach(this.dim_sw, 2, 4, 1, 1);
         this.attach(brightness_label, 0, 5, 2, 1);
         this.attach(this.brightness_slider, 1, 5, 2, 1);
-        this.attach(animate_label, 0, 6, 2, 1);
-        this.attach(this.animate_sw, 2, 6, 1, 1);
     },
 
     _interaction: function(state) {
         switch(state) {
             case 0:
-                // Get radius from scale
-                this.radius = this.blur_slider.get_value();
-                // Save current radius
-                this._settings.set_double("radius", this.radius);
-                break;
-            case 1:
-                this._settings.set_boolean("vignette", this.vignette_sw.active);
+                // Get intensity from scale
+                this.intensity = this.blur_slider.get_value();
+                // Save current intensity
+                this._settings.set_double("intensity", this.intensity);
                 break;
             case 2:
                 this._settings.set_boolean("dim", this.dim_sw.active);
+                if(this.dim_sw.active) {
+                    this._settings.set_double("brightness", this.brightness);
+                } else {
+                    this._settings.set_double("brightness", 1.0);
+                }
                 break;
             case 3:
                 // Get brightness from scale
                 this.brightness = this.brightness_slider.get_value();
-                // Save current radius
+                // Save current brightness
                 this._settings.set_double("brightness", this.brightness);
                 break;
-            case 4:
-                this._settings.set_boolean("animate", this.animate_sw.active);
-                break;
             case 5:
-                if(this.texture[0].has_effects()) {
-                    this.shaderEffect.remove_effect(this.texture);
+                if(this.texture.has_effects()) {
+                    this.texture.clear_effects();
                 } else {
-                    this.shaderEffect.apply_effect(this.texture);
+                    this.texture.add_effect_with_name('vertical_blur', this.vertical_blur);
+                    this.texture.add_effect_with_name('vertical_blur', this.horizontal_blur);
                 }
                 return;
         }
 
-        // Update effect with new values
-        this.shaderEffect.apply_effect(this.texture);
+        // Update effects with new values
+        this.vertical_blur.updateUniforms(this.intensity, this.brightness);
+        this.horizontal_blur.updateUniforms(this.intensity, this.brightness);
     },
-    
+
     _init_callbacks: function() {
         this.blur_slider.connect('value-changed', Lang.bind(this, 
             function() {
@@ -279,10 +244,6 @@ const BlyrPrefsWidget = new Lang.Class ({
                         this._interaction(0);
                         return GLib.SOURCE_REMOVE;
                     }));
-            }));
-        this.vignette_sw.connect('notify::active', Lang.bind(this, 
-            function() {
-                this._interaction(1);
             }));
         this.dim_sw.connect('notify::active', Lang.bind(this, 
             function() {
@@ -298,10 +259,6 @@ const BlyrPrefsWidget = new Lang.Class ({
                         this._interaction(3);
                         return GLib.SOURCE_REMOVE;
                     }));
-            }));
-        this.animate_sw.connect('notify::active', Lang.bind(this, 
-            function() {
-                this._interaction(4);
             }));
         this.eventbox.connect('button_press_event', Lang.bind(this, 
             function() {
