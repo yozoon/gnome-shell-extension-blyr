@@ -64,12 +64,6 @@ const Blyr = new Lang.Class({
     Name: 'Blyr',
 
     _init: function(params) {
-        // Clutter actor which contains the overview backgrounds as children
-        this.bgGroup = Main.overview._backgroundGroup;
-
-        // List made up of the cloned overview backgrounds with z-position -1 and blur filter applied 
-        this.bgList = [];
-
         // Monitor information
         this.pMonitor = Main.layoutManager.primaryMonitor;
         this.pIndex = Main.layoutManager.primaryIndex;
@@ -161,21 +155,22 @@ const Blyr = new Lang.Class({
 
         // Background change listener 
         this.bg_changed_connection = Main.layoutManager._bgManagers[this.pIndex].connect('changed', Lang.bind(this, function() {
-            this._recreateBlurredActors();
             log("Background changed");
+            this._regenerateBlurredActors();
         }));
 
         // Monitors changed callback
         this.monitor_changed_connection = Main.layoutManager.connect('monitors-changed', Lang.bind(this, function() {
             log("monitor setup changed");
-            this._recreateBlurredActors();
+            // Monitor information
+            this.pMonitor = Main.layoutManager.primaryMonitor;
+            this.pIndex = Main.layoutManager.primaryIndex;
+            this._regenerateBlurredActors();
         }));
     },
 
-    _recreateBlurredActors: function() {
-        // Monitor information
-        this.pMonitor = Main.layoutManager.primaryMonitor;
-        this.pIndex = Main.layoutManager.primaryIndex;
+    _regenerateBlurredActors: function() {
+        log("regenerate blurred actors");
         switch(this.mode) {
             case 1:
                 // panel_only
@@ -185,6 +180,8 @@ const Blyr = new Lang.Class({
                 break;
             case 2:
                 // activities_only
+                // Disable vignette effect
+                this._disableVignetteEffect();
                 // Recreate overview background blur actors
                 this._createOverviewBackgrounds();
                 break;
@@ -193,6 +190,8 @@ const Blyr = new Lang.Class({
                 // Recreate panel background blur actor
                 this._removePanelBlur();
                 this._applyPanelBlur();
+                // Disable vignette effect
+                this._disableVignetteEffect();
                 // Recreate overview background blur actors
                 this._createOverviewBackgrounds();
                 break;
@@ -217,32 +216,34 @@ const Blyr = new Lang.Class({
         // Overview showing listener
         this.overview_showing_connection = Main.overview.connect("showing", Lang.bind(this, function() {
             // Fade out the untouched overview background actors to reveal our copied actors.
-            this.bgGroup.get_children().forEach(function(actor) {
+            Main.overview._backgroundGroup.get_children().forEach(function(actor) {
                 // All actors except our copies which have a z-index of -1.
                 if(actor["z-position"] != -1) {
-                    this._fadeOut(actor);
+                    //this._fadeOut(actor);
                 }
             }, this);
         }));
         // Overview Hiding listener
         this.overview_hiding_connection = Main.overview.connect("hiding", Lang.bind(this, function() {
             // Fade in the untouched overview background actors to cover our copied actors.
-            this.bgGroup.get_children().forEach(function(actor) {
+            Main.overview._backgroundGroup.get_children().forEach(function(actor) {
                 // All actors except our copies which have a z-index of -1.
                 if(actor["z-position"] != -1) {
-                    this._fadeIn(actor);
+                    //this._fadeIn(actor);
                 }
             }, this);
         }));
     },
 
     _disconnectOverviewListeners: function() {
-        if(this.overview_showing_connection != undefined)
+        if(this.overview_showing_connection != undefined) {
             Main.overview.disconnect(this.overview_showing_connection);
             this.overview_showing_connection = 0;
-        if(this.overview_hiding_connection != undefined)
+        }
+        if(this.overview_hiding_connection != undefined) {
             Main.overview.disconnect(this.overview_hiding_connection);
             this.overview_hiding_connection = 0;
+        }
     },
 
     _checkModeChange: function() {
@@ -323,7 +324,7 @@ const Blyr = new Lang.Class({
     },
 
     _fadeIn: function(actor) {
-        actor.set_opacity(0);
+        // actor.set_opacity(0);
         Tweener.addTween(actor, 
         {
             opacity: 255,
@@ -333,7 +334,7 @@ const Blyr = new Lang.Class({
     },
 
     _fadeOut: function(actor) {
-        actor.set_opacity(255);
+        // actor.set_opacity(255);
         Tweener.addTween(actor, 
         {
             opacity: 0,
@@ -347,7 +348,7 @@ const Blyr = new Lang.Class({
         Main.overview._shadeBackgrounds = function(){};
         Main.overview._unshadeBackgrounds = function(){};
         // Disable vignette Effect on all overview backgrounds
-        this.bgGroup.get_children().forEach(function(actor) {
+        Main.overview._backgroundGroup.get_children().forEach(function(actor) {
             actor.vignette = false;
         }, null);
     },
@@ -357,44 +358,69 @@ const Blyr = new Lang.Class({
         Main.overview._shadeBackgrounds = _shadeBackgrounds;
         Main.overview._unshadeBackgrounds = _unshadeBackgrounds;
         // Enable vignette Effect on all overview backgrounds
-        this.bgGroup.get_children().forEach(function(actor) {
+        Main.overview._backgroundGroup.get_children().forEach(function(actor) {
             actor.vignette = true;
         }, null);
     },
 
     _createOverviewBackgrounds: function() {
         this._removeOverviewBackgrounds();
+        log(Main.overview._backgroundGroup.get_children().length);
+        let bgList = [];
         // Create initial copy of background actors
-        for(let i = 0; i < this.bgGroup.get_children().length; i++) {
-            let bg = this.bgGroup.get_children()[i];
+        for(let i = 0; i < Main.overview._backgroundGroup.get_children().length; i++) {
+            log("create overview backgrounds");
+            let bg = Main.overview._backgroundGroup.get_children()[i];
+            log("BG " + i + ": " + bg["name"]);
+            log(bg["width"]);
+            log(bg["height"]);
+            log(bg["height"]);
+            log(bg["x"]);
+            log(bg["y"]);
+            log(bg["opacity"]);
+
+            log(bg["vignette"]);
+            log(bg["brightness"]);
+            log(bg["vignette-sharpness"]);
+            bg["name"] = "bg";
+            if(i==0) {
+                bg.opacity = 0;
+                log("opacity 0");
+            }
+            /*
             // Clone the background actor and modify z-position
-            this.bgList[i] = new Meta.BackgroundActor({
+            bgList[i] = new Meta.BackgroundActor({
                 name: bg["name"],
                 background: bg["background"],
                 "meta-screen": bg["meta-screen"],
                 width: bg["width"],
                 height: bg["height"],
-                monitor: bg["monitor"],
+                monitor: g["height"],
                 x: bg["x"],
                 y: bg["y"],
                 "z-position": -1
             });
+
             // Apply blur effect
-            this._applyTwoPassBlur(this.bgList[i]);
+            this._applyTwoPassBlur(bgList[i]);
+            */
         }
+        /*
+        log("actors after 2: " + Main.overview._backgroundGroup.get_children().length);
         // Add the blurred actors to the background group
-        for(let i = 0; i < this.bgList.length; i++) {
-            this.bgGroup.add_child(this.bgList[i]);
+        for(let i = 0; i < bgList.length; i++) {
+            Main.overview._backgroundGroup.add_child(bgList[i]);
         }
+        */
     },
 
     _updateOverviewBackgrounds: function() {
         log("update overview backgrounds");
-        if(this.bgList.length > 0) {
-            log("bglist longer than 0");
-            for(let i = 0; i < this.bgList.length; i++) {
-                let vblur = this.bgList[i].get_effect("vertical_blur");
-                let hblur = this.bgList[i].get_effect("horizontal_blur");
+        let bgChildren = Main.overview._backgroundGroup.get_children();
+        for(let i = 0; i < bgChildren.length; i++) {
+            if(bgChildren[i]["z-position"] == -1) {
+                let vblur = bgChildren[i].get_effect("vertical_blur");
+                let hblur = bgChildren[i].get_effect("horizontal_blur");
                 if(vblur != undefined && hblur != undefined) {
                     log("update uniforms");
                     vblur.updateUniforms(this.intensity, this.brightness);
@@ -405,24 +431,27 @@ const Blyr = new Lang.Class({
     },
 
     _removeOverviewBackgrounds: function() {
-        // Reset the bg list instance
-        this.bgList = [];
-        let bgChildren = this.bgGroup.get_children();
-
-        // Update our list of injected background actors
-        for(let i = 0; i < bgChildren.length; i++) {
+        let bgChildren = Main.overview._backgroundGroup.get_children();
+        log("actors before: " + bgChildren.length);
+        // 
+        for(let i = bgChildren.length - 1; i >= 0; i--) {
+            log("monitor: " + bgChildren[i]["monitor"]);
+            log("z: " + bgChildren[i]["z-position"]);
+            // Remove modified actor
             if(bgChildren[i]["z-position"] == -1) {
-                this.bgList.push(bgChildren[i]);
+                Main.overview._backgroundGroup.remove_child(bgChildren[i]);
+                bgChildren[i] = undefined;
             }
-        }
-        if(this.bgList.length > 0) {
-            // Remove all injected background actors
-            for(let i = 0; i < this.bgList.length; i++) {
-                this.bgGroup.remove_child(this.bgList[i]);
+            // Remove ghost actors
+            /*
+            if(bgChildren[i]["name"] == "bg") {
+                Main.overview._backgroundGroup.remove_child(bgChildren[i]);
+                bgChildren[i] = undefined;
             }
+            */
         }
-        // Reset the bg list instance again
-        this.bgList = [];
+
+        log("actors after: " + Main.overview._backgroundGroup.get_children().length);
     },
 
     _applyPanelBlur: function() {

@@ -68,15 +68,19 @@ var BlurEffect = new Lang.Class({
             + "/shader.glsl");
         this.set_shader_source(this.SHADER);
 
+        // Store params
         this.direction = direction;
         this.width = width;
         this.height = height;
+        this.intensity = intensity;
+        this.brightness = brightness;
+
         // Set shader values
         this.set_uniform_value('dir', this.direction);
         this.set_uniform_value('width', this.width);
         this.set_uniform_value('height', this.height);
-        this.set_uniform_value('radius', intensity + 0.0001);
-        this.set_uniform_value('brightness', brightness + 0.0001);
+        this.set_uniform_value('radius', this.intensity + 0.0001);
+        this.set_uniform_value('brightness', this.brightness + 0.0001);
 
         return this;
     },

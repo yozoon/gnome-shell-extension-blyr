@@ -68,6 +68,7 @@ const BlyrPrefsWidget = new Lang.Class ({
             row_spacing : 15,
             vexpand : false
         });
+        this.blur_timeout = 0;
         this._settings = Shared.getSettings(Shared.SCHEMA_NAME, 
             Extension.dir.get_child('schemas').get_path());
         this._get_settings();
