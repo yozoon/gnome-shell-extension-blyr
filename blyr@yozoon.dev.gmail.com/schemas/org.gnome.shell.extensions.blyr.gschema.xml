@@ -7,11 +7,6 @@
       <summary>Blur intensity</summary>
       <description>Influences the blur effect strenght</description>
     </key>
-    <key type="b" name="dim">
-      <default>true</default>
-      <summary>Enable or disable dimming with the blur shader</summary>
-      <description>Enable or disable dimming with the blur shader</description>
-    </key>
     <key type="d" name="brightness">
       <default>0.7</default>
       <summary>Brightness value</summary>

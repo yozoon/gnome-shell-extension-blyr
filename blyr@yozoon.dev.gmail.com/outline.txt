@@ -3,10 +3,11 @@ Every background needs its own blur effect because the shader uses the width and
 Fortunately we can access the Clutter effect of the actor using .get_effect("name"); so we just have to keep a list of the actors.
 
 
-3 bugs (so far):
+4 bugs (so far):
 	- Wallpaper change creates one bg actor too much -> gets copied, and some metadata causes a crash of the mutter background actor instance
 	- Reapplying the same background from settings menu causes the background actor to appears as if the vignette effect was applied, even though the vignette property is set to false. 
 	- After certain value changes (settings change listener) with [BlurEffect].updateUniforms(...), the shader effect seems to forget the direction property of the glsl shader (only horizontal/ vertical blur).
+	- Blurred panel appears at screen shade and login screen after waking from hibernation
 
 
 
@@ -23,6 +24,8 @@ If !panel_only
 	Inject JS
 Remove vignette effect for all overview backgrounds
 Register callbacks
+
+Maybe we should add the blurred actors, managed by a background manager, directly to Main.layoutManager.overviewGroup 
 
 == Callbacks ==
 Background changed  								

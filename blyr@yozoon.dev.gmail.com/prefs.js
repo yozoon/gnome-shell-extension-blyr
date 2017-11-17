@@ -60,36 +60,68 @@ const UPDATE_TIMEOUT = 500;
 
 const BlyrPrefsWidget = new Lang.Class ({
     Name: 'BlyrPrefsWidget',
-    Extends: Gtk.Grid,
+    Extends: Gtk.Box,
 
-    _init: function() {
+    _init: function(showPreview) {
         this.parent({
-            margin: 15, 
-            row_spacing : 15,
-            vexpand : false
+            orientation: Gtk.Orientation.VERTICAL
         });
-        this.blur_timeout = 0;
-        this._settings = Shared.getSettings(Shared.SCHEMA_NAME, 
-            Extension.dir.get_child('schemas').get_path());
-        this._get_settings();
-        this._buildUI();
-        this._init_callbacks();
-    },
 
-    _get_settings: function() {
-        this.mode = this._settings.get_int("mode");
-        this.intensity = this._settings.get_double("intensity");
-        this.brightness = this._settings.get_double("brightness");
-        this.dim = this._settings.get_boolean("dim");
+        this.settings = Shared.getSettings(Shared.SCHEMA_NAME, 
+            Extension.dir.get_child('schemas').get_path());
+
+        this.showPreview = showPreview;
+        this.intensity_timeout = 0;
+        this.brightness_timeout = 0;
+        this.mode = this.settings.get_int("mode");
+        this.intensity = this.settings.get_double("intensity");
+        this.brightness = this.settings.get_double("brightness");
+
+        this._buildUI();
     },
 
     _buildUI: function() {
-        if(eligibleForPanelBlur) {
-            //------------------------------------------------------------------------//
-            // Select label
-            this.select_label = new Gtk.Label({
-                halign : Gtk.Align.START
+        /*
+        ** EFFECT PREVIEW
+        */
+        if(this.showPreview) {
+            // Effect Preview
+            this.previewBox = new Gtk.EventBox();
+            let embed = new GtkClutter.Embed();
+            embed.set_size_request(600, 150);
+
+            // Get extension path
+            let path = Extension.dir.get_child('assets').get_path();
+
+            // Create Clutter.Texture from image
+            this.texture = new Clutter.Texture({
+                filename: path + '/kingscanyon.png',
+                width : 600
             });
+
+            // Apply blur
+            this.vertical_blur = new Effect.BlurEffect(this.texture.width, this.texture.height, 0, this.intensity, this.brightness);
+            this.texture.add_effect_with_name('vertical_blur', this.vertical_blur);
+            this.horizontal_blur = new Effect.BlurEffect(this.texture.width, this.texture.height, 1, this.intensity, this.brightness);
+            this.texture.add_effect_with_name('vertical_blur', this.horizontal_blur);
+
+            // Add the clutter texture to the gtk embed
+            embed.get_stage().add_child(this.texture);
+
+            // Connect button press callback
+            this.previewBox.connect('button_press_event', Lang.bind(this, this._previewClicked));
+
+            this.previewBox.add(embed);
+        }
+
+        /*
+        ** MODE SELECTOR
+        */
+        if(eligibleForPanelBlur) {
+            this.selectBox = new Gtk.Box({ spacing: 8, margin: 8 });
+
+            // Select label
+            this.select_label = new Gtk.Label({ halign : Gtk.Align.START });
             this.select_label.set_markup("<b>"+_("Apply Effect to")+"</b>");
 
             // Dropdown menu
@@ -108,163 +140,125 @@ const BlyrPrefsWidget = new Lang.Class ({
 
             this.combobox.set_active(this.mode - 1); // I know... the problems of starting the index with 1
             
-            this.combobox.connect('changed', Lang.bind(this, function(entry) {
-                let [success, iter] = this.combobox.get_active_iter();
-                if (!success)
-                    return;
-                this.mode = this.listitems.indexOf(model.get_value(iter, 0)) + 1;
-                log(this.mode);
-                this._settings.set_int('mode', this.mode);
-            }));
+            // Connect changed callback
+            this.combobox.connect('changed', Lang.bind(this, this._modeChanged));
+
+            this.selectBox.pack_start(this.select_label, true, true, 0);
+            this.selectBox.pack_start(this.combobox, true, true, 0);
         }
 
-        //------------------------------------------------------------------------//
+        /*
+        ** BLUR INTENSITY
+        **/
+        this.intensityBox = new Gtk.Box({ spacing: 8, margin: 8 });
         // Blur label
-        let blur_label = new Gtk.Label({
-            halign : Gtk.Align.START
-        });
-        blur_label.set_markup("<b>"+_("Blur intensity")+"</b>");
+        let intensity_label = new Gtk.Label({ halign : Gtk.Align.START });
+        intensity_label.set_markup("<b>"+_("Blur Intensity")+"</b>");
 
         // Blur slider
-        this.blur_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,
-            1.0,29.9,0.1);
-        this.blur_slider.set_value(this.intensity);
+        this.intensity_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1.0, 29.9, 0.1);
+        this.intensity_slider.set_value(this.intensity);
 
-        //------------------------------------------------------------------------//
-        // Effect Preview
-        this.eventbox = new Gtk.EventBox();
-        let embed = new GtkClutter.Embed();
-        embed.set_size_request(600, 150);
-        this.eventbox.add(embed);
+        // Connect value-changed callback
+        this.intensity_slider.connect('value-changed', Lang.bind(this, this._intensityChanged));
 
-        // Get extension path
-        let path = Extension.dir.get_child('assets').get_path();
+        this.intensityBox.pack_start(intensity_label, true, true, 0);
+        this.intensityBox.pack_start(this.intensity_slider, true, true, 0);
 
-        // Create Clutter.Texture from image
-        this.texture = new Clutter.Texture({
-            filename: path + '/kingscanyon.png',
-            width : 600
-        });
-
-        // Apply blur
-        this.vertical_blur = new Effect.BlurEffect(this.texture.width, this.texture.height, 0, this.intensity, this.brightness);
-        this.horizontal_blur = new Effect.BlurEffect(this.texture.width, this.texture.height, 1, this.intensity, this.brightness);
-        this.texture.add_effect_with_name('vertical_blur', this.vertical_blur);
-        this.texture.add_effect_with_name('vertical_blur', this.horizontal_blur);
-        let stage = embed.get_stage();
-        stage.add_child(this.texture);
-
-        //------------------------------------------------------------------------//
-        // Dim label
-        let dim_label = new Gtk.Label({
-            halign : Gtk.Align.START
-        });
-        dim_label.set_markup("<b>"+_("Dim Overview background")+"</b>");
-
-        // Dim switch
-        this.dim_sw = new Gtk.Switch({
-            name : "Dim Overview Background",
-            active : this._settings.get_boolean("dim"),
-            halign : Gtk.Align.END,
-            valign : Gtk.Align.START
-        });
+        /*
+        ** BRIGHTNESS
+        */
+        this.brightnessBox = new Gtk.Box({ spacing: 8, margin: 8 });
 
         // Brightness label
-        let brightness_label = new Gtk.Label({
-            halign : Gtk.Align.START
-        });
-        brightness_label.set_markup("<b>"+_("Overview background brightness")+"</b>");
+        let brightness_label = new Gtk.Label({ halign : Gtk.Align.START });
+        brightness_label.set_markup("<b>"+_("Overview Background Brightness")+"</b>");
         
         // Brightness slider
-        this.brightness_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,
-            0.0,1.0,0.01);
+        this.brightness_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.0, 1.0,0.01);
         this.brightness_slider.set_value(this.brightness);
 
-        //------------------------------------------------------------------------//
-        // Attach UI elements to Grid
-        // attach(actor, column, row, width(colums), height(rows))
-        if(eligibleForPanelBlur) {
-            this.attach(this.select_label, 0, 0, 1, 1);
-            this.attach(this.combobox, 1, 0, 2, 1);
-        }
-        this.attach(blur_label, 0, 1, 1, 1);
-        this.attach(this.blur_slider, 1, 1, 2, 1);
-        this.attach(this.eventbox, 0, 2, 3, 1);
-        this.attach(dim_label, 0, 4, 2, 1);
-        this.attach(this.dim_sw, 2, 4, 1, 1);
-        this.attach(brightness_label, 0, 5, 2, 1);
-        this.attach(this.brightness_slider, 1, 5, 2, 1);
+        // Connect value-changed callback
+        this.brightness_slider.connect('value-changed', Lang.bind(this, this._brightnessChanged));
+
+        this.brightnessBox.pack_start(brightness_label, true, true, 0);
+        this.brightnessBox.pack_start(this.brightness_slider, true, true, 0);
+
+        /*
+        ** ATTACH WIDGETS TO PARENT
+        */
+        // Preview box
+        if(this.showPreview)
+            this.pack_start(this.previewBox, true, false, 0);
+
+        // Mode selector
+        if(eligibleForPanelBlur)
+            this.pack_start(this.selectBox, true, false, 0);
+
+        // Intensity slider
+        this.pack_start(this.intensityBox, true, false, 0);
+
+        // Brightness slider
+        this.pack_start(this.brightnessBox, true, false, 0);
     },
 
-    _interaction: function(state) {
-        switch(state) {
-            case 0:
+    _modeChanged: function() {
+        let [success, iter] = this.combobox.get_active_iter();
+        if (!success)
+            return;
+        this.mode = this.listitems.indexOf(model.get_value(iter, 0)) + 1;
+        log(this.mode);
+        this.settings.set_int('mode', this.mode);
+    },
+
+    _intensityChanged: function() {
+        if (this.intensity_timeout > 0)
+            Mainloop.source_remove(this.intensity_timeout);
+
+        // Delay updating so we don't get overrun by effect updates
+        this.intensity_timeout = Mainloop.timeout_add(UPDATE_TIMEOUT, Lang.bind(this, 
+            function() {
                 // Get intensity from scale
-                this.intensity = this.blur_slider.get_value();
+                this.intensity = this.intensity_slider.get_value();
                 // Save current intensity
-                this._settings.set_double("intensity", this.intensity);
-                break;
-            case 2:
-                this._settings.set_boolean("dim", this.dim_sw.active);
-                if(this.dim_sw.active) {
-                    this._settings.set_double("brightness", this.brightness);
-                } else {
-                    this._settings.set_double("brightness", 1.0);
-                }
-                break;
-            case 3:
+                this.settings.set_double("intensity", this.intensity);
+                // Update preview
+                this._updatePreview();
+                return GLib.SOURCE_REMOVE;
+            }));
+    },
+
+    _previewClicked: function() {
+        if(this.texture.has_effects()) {
+            this.texture.clear_effects();
+        } else {
+            this.texture.add_effect_with_name('vertical_blur', this.vertical_blur);
+            this.texture.add_effect_with_name('vertical_blur', this.horizontal_blur);
+        }
+    },
+
+    _brightnessChanged: function() {
+        if (this.brightness_timeout > 0)
+            Mainloop.source_remove(this.brightness_timeout);
+        // Delay updating so we don't get overrun by effect updates
+        this.brightness_timeout = Mainloop.timeout_add(UPDATE_TIMEOUT, Lang.bind(this, 
+            function() {
                 // Get brightness from scale
                 this.brightness = this.brightness_slider.get_value();
                 // Save current brightness
-                this._settings.set_double("brightness", this.brightness);
-                break;
-            case 5:
-                if(this.texture.has_effects()) {
-                    this.texture.clear_effects();
-                } else {
-                    this.texture.add_effect_with_name('vertical_blur', this.vertical_blur);
-                    this.texture.add_effect_with_name('vertical_blur', this.horizontal_blur);
-                }
-                return;
-        }
-
-        // Update effects with new values
-        this.vertical_blur.updateUniforms(this.intensity, this.brightness);
-        this.horizontal_blur.updateUniforms(this.intensity, this.brightness);
+                this.settings.set_double("brightness", this.brightness);
+                // Update preview
+                this._updatePreview();
+                return GLib.SOURCE_REMOVE;
+            }));
     },
 
-    _init_callbacks: function() {
-        this.blur_slider.connect('value-changed', Lang.bind(this, 
-            function() {
-                if (this.blur_timeout > 0)
-                    Mainloop.source_remove(this.blur_timeout);
-
-                // Delay updating so we don't get overrun by effect updates
-                this.blur_timeout = Mainloop.timeout_add(UPDATE_TIMEOUT, Lang.bind(this, 
-                    function() {
-                        this._interaction(0);
-                        return GLib.SOURCE_REMOVE;
-                    }));
-            }));
-        this.dim_sw.connect('notify::active', Lang.bind(this, 
-            function() {
-                this._interaction(2);
-            }));
-        this.brightness_slider.connect('value-changed', Lang.bind(this, 
-            function() {
-                if (this.brightness_timeout > 0)
-                    Mainloop.source_remove(this.brightness_timeout);
-                // Delay updating so we don't get overrun by effect updates
-                this.brightness_timeout = Mainloop.timeout_add(UPDATE_TIMEOUT, Lang.bind(this, 
-                    function() {
-                        this._interaction(3);
-                        return GLib.SOURCE_REMOVE;
-                    }));
-            }));
-        this.eventbox.connect('button_press_event', Lang.bind(this, 
-            function() {
-                this._interaction(5);
-            }));
+    _updatePreview: function() {
+        if(this.showPreview) {
+            // Update effects with new values
+            this.vertical_blur.updateUniforms(this.intensity, this.brightness);
+            this.horizontal_blur.updateUniforms(this.intensity, this.brightness);
+        }
     }
 });
 
@@ -273,11 +267,21 @@ function init(){
 }
 
 function buildPrefsWidget() {
-    // Init GtkClutter and Clutter
-    GtkClutter.init(null);
-    Clutter.init(null);
+    var clutterinit = false;
 
-    let PrefsWidget = new BlyrPrefsWidget();
+    // Try to initialise GtkClutter and Clutter which are required to show the blur preview. 
+    // If this fails we will not generate the preview actor to keep all the main functionality 
+    // of the preferences dialog accessible. 
+    try {
+        // Init GtkClutter and Clutter
+        GtkClutter.init(null);
+        Clutter.init(null);
+        clutterinit = true;
+    } catch(err) {
+        log("Clutter or GtkClutter init failed with the following " + err);
+    }
+
+    let PrefsWidget = new BlyrPrefsWidget(clutterinit);
     PrefsWidget.show_all();
 
     return PrefsWidget;

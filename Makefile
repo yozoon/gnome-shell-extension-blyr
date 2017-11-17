@@ -23,7 +23,6 @@ zip-file: all
 local-install: all local-uninstall
 	@ cp -rf "$(SOURCEDIR)" "$(LOCALPREFIX)/$(UUID)"
 	@ echo "Extension successfully installed."
-	@ gnome-shell-extension-tool -r blyr@yozoon.dev.gmail.com
 
 local-uninstall:
 	@ # If installed, remove the extension

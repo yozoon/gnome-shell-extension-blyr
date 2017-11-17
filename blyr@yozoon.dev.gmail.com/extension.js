@@ -40,9 +40,11 @@ const Lang = imports.lang;
 const Meta = imports.gi.Meta;
 const Shell = imports.gi.Shell;
 const Clutter = imports.gi.Clutter;
+const GLib = imports.gi.GLib;
 const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
 const Overview = imports.ui.overview;
+const Background = imports.ui.background;
 const ExtensionUtils = imports.misc.extensionUtils;
 
 const Extension = ExtensionUtils.getCurrentExtension();
@@ -68,6 +70,12 @@ const Blyr = new Lang.Class({
         this.pMonitor = Main.layoutManager.primaryMonitor;
         this.pIndex = Main.layoutManager.primaryIndex;
 
+        // Background group to contain the blurred overview backgrounds
+        this.modifiedOverviewBackgroundGroup = new Meta.BackgroundGroup({ reactive: true , "z-position": -1 });
+
+        // Add this background group to the layoutManager's overview Group
+        Main.layoutManager.overviewGroup.add_child(this.modifiedOverviewBackgroundGroup);
+
         // Get current mode
         this.mode = settings.get_int("mode");
 
@@ -77,7 +85,7 @@ const Blyr = new Lang.Class({
             this.mode = 2;
         }
 
-        log("Mode = " + this.mode);
+        //log("Mode = " + this.mode);
 
         // Get current settings
         this.intensity = settings.get_double("intensity");
@@ -123,6 +131,7 @@ const Blyr = new Lang.Class({
     _connectCallbacks: function() {
         // Settings changed listener
         this.setting_changed_connection = settings.connect("changed", Lang.bind(this, function() {
+            log("settings changed");
             if(eligibleForPanelBlur)
                 this._checkModeChange();
 
@@ -156,12 +165,19 @@ const Blyr = new Lang.Class({
         // Background change listener 
         this.bg_changed_connection = Main.layoutManager._bgManagers[this.pIndex].connect('changed', Lang.bind(this, function() {
             log("Background changed");
-            this._regenerateBlurredActors();
+            if(!this.bgchanged){
+                this._regenerateBlurredActors();
+            }
+            this.bgchanged = true;
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, Lang.bind(this, function() {
+                this.bgchanged = false;
+            }));
         }));
 
         // Monitors changed callback
         this.monitor_changed_connection = Main.layoutManager.connect('monitors-changed', Lang.bind(this, function() {
             log("monitor setup changed");
+            let pIndex_old = this.pIndex;
             // Monitor information
             this.pMonitor = Main.layoutManager.primaryMonitor;
             this.pIndex = Main.layoutManager.primaryIndex;
@@ -217,20 +233,14 @@ const Blyr = new Lang.Class({
         this.overview_showing_connection = Main.overview.connect("showing", Lang.bind(this, function() {
             // Fade out the untouched overview background actors to reveal our copied actors.
             Main.overview._backgroundGroup.get_children().forEach(function(actor) {
-                // All actors except our copies which have a z-index of -1.
-                if(actor["z-position"] != -1) {
-                    //this._fadeOut(actor);
-                }
+                this._fadeOut(actor);
             }, this);
         }));
         // Overview Hiding listener
         this.overview_hiding_connection = Main.overview.connect("hiding", Lang.bind(this, function() {
             // Fade in the untouched overview background actors to cover our copied actors.
             Main.overview._backgroundGroup.get_children().forEach(function(actor) {
-                // All actors except our copies which have a z-index of -1.
-                if(actor["z-position"] != -1) {
-                    //this._fadeIn(actor);
-                }
+                this._fadeIn(actor);
             }, this);
         }));
     },
@@ -276,7 +286,7 @@ const Blyr = new Lang.Class({
             case 21:
                 // The user switched from activities_only to panel_only
                 // Remove the blurred backgrounds
-                this._removeOverviewBackgrounds();
+                //this._removeOverviewBackgrounds();
                 // Unregister overview showing/hiding callback
                 this._disconnectOverviewListeners();
                 // Restore the vignette Effect
@@ -292,7 +302,7 @@ const Blyr = new Lang.Class({
             case 31:
                 // The user switched from blur_both to panel_only
                 // Remove the blurred backgrounds
-                this._removeOverviewBackgrounds();
+                //this._removeOverviewBackgrounds();
                 // Unregister overview showing/hiding callback
                 this._disconnectOverviewListeners();
                 // Restore the vignette Effect
@@ -312,15 +322,12 @@ const Blyr = new Lang.Class({
         // Update effect settings
         this.intensity = settings.get_double("intensity");
         this.brightness = settings.get_double("brightness");
-
-        // Only apply effect to actors with z-position equal to -1
-        if(actor["z-position"] == -1) {
-            actor.set_opacity(255);
-            if(!actor.get_effect("vertical_blur"))
-                actor.add_effect_with_name('vertical_blur', new Effect.BlurEffect(actor.width, actor.height, 0, this.intensity, this.brightness));
-            if(!actor.get_effect("horizontal_blur"))
-                actor.add_effect_with_name('horizontal_blur', new Effect.BlurEffect(actor.width, actor.height, 1, this.intensity, this.brightness));
-        }
+        
+        actor.set_opacity(255);
+        if(!actor.get_effect("vertical_blur"))
+            actor.add_effect_with_name('vertical_blur', new Effect.BlurEffect(actor.width, actor.height, 0, this.intensity, this.brightness));
+        if(!actor.get_effect("horizontal_blur"))
+            actor.add_effect_with_name('horizontal_blur', new Effect.BlurEffect(actor.width, actor.height, 1, this.intensity, this.brightness));
     },
 
     _fadeIn: function(actor) {
@@ -364,63 +371,47 @@ const Blyr = new Lang.Class({
     },
 
     _createOverviewBackgrounds: function() {
-        this._removeOverviewBackgrounds();
-        log(Main.overview._backgroundGroup.get_children().length);
-        let bgList = [];
-        // Create initial copy of background actors
-        for(let i = 0; i < Main.overview._backgroundGroup.get_children().length; i++) {
-            log("create overview backgrounds");
-            let bg = Main.overview._backgroundGroup.get_children()[i];
-            log("BG " + i + ": " + bg["name"]);
-            log(bg["width"]);
-            log(bg["height"]);
-            log(bg["height"]);
-            log(bg["x"]);
-            log(bg["y"]);
-            log(bg["opacity"]);
+        // Remove all children from modified background actor
+        //this.modifiedOverviewBackgroundGroup.remove_all_children();
 
-            log(bg["vignette"]);
-            log(bg["brightness"]);
-            log(bg["vignette-sharpness"]);
-            bg["name"] = "bg";
-            if(i==0) {
-                bg.opacity = 0;
-                log("opacity 0");
-            }
-            /*
-            // Clone the background actor and modify z-position
-            bgList[i] = new Meta.BackgroundActor({
-                name: bg["name"],
-                background: bg["background"],
-                "meta-screen": bg["meta-screen"],
-                width: bg["width"],
-                height: bg["height"],
-                monitor: g["height"],
-                x: bg["x"],
-                y: bg["y"],
-                "z-position": -1
+        // Get all overview backgrounds
+        let backgrounds = Main.overview._backgroundGroup.get_children();
+        log("Number of background actors: " + Main.overview._backgroundGroup.get_n_children());
+        // Create initial copy of background actors
+        
+        for(let i = 0; i < backgrounds.length; i++) {
+            //log("screen: " + backgrounds[i].background["meta-screen"].get_display());
+
+            log("BG number " + i);
+            log("Monitor: " + backgrounds[i]["monitor"]);
+            // Clone the background actor
+            let bgActor = new Meta.BackgroundActor({
+                name: "blurred",
+                background: backgrounds[i].background,
+                "meta-screen": backgrounds[i]["meta-screen"],
+                width: backgrounds[i]["width"],
+                height: backgrounds[i]["height"],
+                monitor: backgrounds[i]["monitor"],
+                x: backgrounds[i]["x"],
+                y: backgrounds[i]["y"]
             });
 
             // Apply blur effect
-            this._applyTwoPassBlur(bgList[i]);
-            */
+            this._applyTwoPassBlur(bgActor);
+
+            // Add child to our modified BG actor
+            this.modifiedOverviewBackgroundGroup.add_child(bgActor);
         }
-        /*
-        log("actors after 2: " + Main.overview._backgroundGroup.get_children().length);
-        // Add the blurred actors to the background group
-        for(let i = 0; i < bgList.length; i++) {
-            Main.overview._backgroundGroup.add_child(bgList[i]);
-        }
-        */
     },
 
     _updateOverviewBackgrounds: function() {
+        /*
         log("update overview backgrounds");
-        let bgChildren = Main.overview._backgroundGroup.get_children();
-        for(let i = 0; i < bgChildren.length; i++) {
-            if(bgChildren[i]["z-position"] == -1) {
-                let vblur = bgChildren[i].get_effect("vertical_blur");
-                let hblur = bgChildren[i].get_effect("horizontal_blur");
+        let backgrounds = this.modifiedOverviewBackgroundGroup.get_children();
+        for(let i = 0; i < backgrounds.length; i++) {
+            if(backgrounds[i]["z-position"] == -1) {
+                let vblur = backgrounds[i].get_effect("vertical_blur");
+                let hblur = backgrounds[i].get_effect("horizontal_blur");
                 if(vblur != undefined && hblur != undefined) {
                     log("update uniforms");
                     vblur.updateUniforms(this.intensity, this.brightness);
@@ -428,30 +419,7 @@ const Blyr = new Lang.Class({
                 }
             }
         }
-    },
-
-    _removeOverviewBackgrounds: function() {
-        let bgChildren = Main.overview._backgroundGroup.get_children();
-        log("actors before: " + bgChildren.length);
-        // 
-        for(let i = bgChildren.length - 1; i >= 0; i--) {
-            log("monitor: " + bgChildren[i]["monitor"]);
-            log("z: " + bgChildren[i]["z-position"]);
-            // Remove modified actor
-            if(bgChildren[i]["z-position"] == -1) {
-                Main.overview._backgroundGroup.remove_child(bgChildren[i]);
-                bgChildren[i] = undefined;
-            }
-            // Remove ghost actors
-            /*
-            if(bgChildren[i]["name"] == "bg") {
-                Main.overview._backgroundGroup.remove_child(bgChildren[i]);
-                bgChildren[i] = undefined;
-            }
-            */
-        }
-
-        log("actors after: " + Main.overview._backgroundGroup.get_children().length);
+        */
     },
 
     _applyPanelBlur: function() {
@@ -487,7 +455,7 @@ const Blyr = new Lang.Class({
             width: this.pMonitor.width,
             height: this.panelBox.height*2, /* Needed to reduce edge darkening caused by high blur intensities */
             y: -1,
-            "z-position": -1 // hopefully works
+            "z-position": -1
         });
 
         // Only show one part of the panel background actor as large as the panel itself
@@ -522,7 +490,7 @@ const Blyr = new Lang.Class({
         this.panel_bg = null;
     },
 
-    _disable: function() {
+    disable: function() {
         // Disconnect Callbacks
         if(this.mode == 2 || this.mode == 3) {
             this._disconnectOverviewListeners();
@@ -530,7 +498,7 @@ const Blyr = new Lang.Class({
         this._disconnectListeners();
 
         // Restore original Shell state
-        this._removeOverviewBackgrounds();
+        //this._removeOverviewBackgrounds();
         this._restoreVignetteEffect();
         if(eligibleForPanelBlur && (this.mode == 1 || this.mode == 3))
             this._removePanelBlur();
@@ -546,6 +514,6 @@ function enable() {
 }
 
 function disable() {
-    blyr._disable();
+    blyr.disable();
     blyr = null;
 };
