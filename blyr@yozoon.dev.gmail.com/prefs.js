@@ -60,12 +60,10 @@ const UPDATE_TIMEOUT = 500;
 
 const BlyrPrefsWidget = new Lang.Class ({
     Name: 'BlyrPrefsWidget',
-    Extends: Gtk.Box,
+    Extends: Gtk.VBox,
 
     _init: function(showPreview) {
-        this.parent({
-            orientation: Gtk.Orientation.VERTICAL
-        });
+        this.parent();
 
         this.settings = Shared.getSettings(Shared.SCHEMA_NAME, 
             Extension.dir.get_child('schemas').get_path());
@@ -86,7 +84,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         */
         if(this.showPreview) {
             // Effect Preview
-            this.previewBox = new Gtk.EventBox();
+            this.previewBox = new Gtk.Box();
             let embed = new GtkClutter.Embed();
             embed.set_size_request(600, 150);
 
@@ -111,32 +109,31 @@ const BlyrPrefsWidget = new Lang.Class ({
             // Connect button press callback
             this.previewBox.connect('button_press_event', Lang.bind(this, this._previewClicked));
 
-            this.previewBox.add(embed);
+            this.previewBox.pack_start(embed, false, false, 0);
         }
 
         /*
         ** MODE SELECTOR
         */
         if(eligibleForPanelBlur) {
-            this.selectBox = new Gtk.Box({ spacing: 8, margin: 8 });
+            this.selectBox = new Gtk.HBox({ spacing: 8, margin: 8 });
 
             // Select label
             this.select_label = new Gtk.Label({ halign : Gtk.Align.START });
             this.select_label.set_markup("<b>"+_("Apply Effect to")+"</b>");
 
             // Dropdown menu
-            this.listitems = ['activities', 'panel', 'both'];
-            let model = new Gtk.ListStore();
-            model.set_column_types([GObject.TYPE_STRING, GObject.TYPE_STRING]);
+            this.model = new Gtk.ListStore();
+            this.model.set_column_types([GObject.TYPE_INT, GObject.TYPE_STRING]);
 
-            this.combobox = new Gtk.ComboBox({model: model});
+            this.combobox = new Gtk.ComboBox({model: this.model});
             let renderer = new Gtk.CellRendererText();
             this.combobox.pack_start(renderer, true);
             this.combobox.add_attribute(renderer, 'text', 1);
 
-            model.set(model.append(), [0, 1], [this.listitems[0],_("Panel")]);
-            model.set(model.append(), [0, 1], [this.listitems[1],_("Activities Screen")]);
-            model.set(model.append(), [0, 1], [this.listitems[2],_("Activities + Panel")]);
+            this.model.set(this.model.append(), [0, 1], [1,_("Panel")]);
+            this.model.set(this.model.append(), [0, 1], [2,_("Activities Screen")]);
+            this.model.set(this.model.append(), [0, 1], [3,_("Activities + Panel")]);
 
             this.combobox.set_active(this.mode - 1); // I know... the problems of starting the index with 1
             
@@ -150,7 +147,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         /*
         ** BLUR INTENSITY
         **/
-        this.intensityBox = new Gtk.Box({ spacing: 8, margin: 8 });
+        this.intensityBox = new Gtk.HBox({ spacing: 8, margin: 8, homogeneous: true });
         // Blur label
         let intensity_label = new Gtk.Label({ halign : Gtk.Align.START });
         intensity_label.set_markup("<b>"+_("Blur Intensity")+"</b>");
@@ -168,7 +165,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         /*
         ** BRIGHTNESS
         */
-        this.brightnessBox = new Gtk.Box({ spacing: 8, margin: 8 });
+        this.brightnessBox = new Gtk.HBox({ spacing: 8, margin: 8, homogeneous: true });
 
         // Brightness label
         let brightness_label = new Gtk.Label({ halign : Gtk.Align.START });
@@ -189,25 +186,33 @@ const BlyrPrefsWidget = new Lang.Class ({
         */
         // Preview box
         if(this.showPreview)
-            this.pack_start(this.previewBox, true, false, 0);
+            this.pack_start(this.previewBox, false, false, 0);
 
         // Mode selector
         if(eligibleForPanelBlur)
-            this.pack_start(this.selectBox, true, false, 0);
+            this.pack_start(this.selectBox, false, false, 0);
 
         // Intensity slider
-        this.pack_start(this.intensityBox, true, false, 0);
+        this.pack_start(this.intensityBox, false, false, 0);
 
         // Brightness slider
-        this.pack_start(this.brightnessBox, true, false, 0);
+        this.pack_start(this.brightnessBox, false, false, 0);
+    },
+
+    _previewClicked: function() {
+        if(this.texture.has_effects()) {
+            this.texture.clear_effects();
+        } else {
+            this.texture.add_effect_with_name('vertical_blur', this.vertical_blur);
+            this.texture.add_effect_with_name('vertical_blur', this.horizontal_blur);
+        }
     },
 
     _modeChanged: function() {
         let [success, iter] = this.combobox.get_active_iter();
         if (!success)
             return;
-        this.mode = this.listitems.indexOf(model.get_value(iter, 0)) + 1;
-        log(this.mode);
+        this.mode = this.model.get_value(iter, 0);
         this.settings.set_int('mode', this.mode);
     },
 
@@ -222,19 +227,13 @@ const BlyrPrefsWidget = new Lang.Class ({
                 this.intensity = this.intensity_slider.get_value();
                 // Save current intensity
                 this.settings.set_double("intensity", this.intensity);
+                // Apply effect if not applied
+                if(!this.texture.has_effects())
+                    this._previewClicked();
                 // Update preview
                 this._updatePreview();
                 return GLib.SOURCE_REMOVE;
             }));
-    },
-
-    _previewClicked: function() {
-        if(this.texture.has_effects()) {
-            this.texture.clear_effects();
-        } else {
-            this.texture.add_effect_with_name('vertical_blur', this.vertical_blur);
-            this.texture.add_effect_with_name('vertical_blur', this.horizontal_blur);
-        }
     },
 
     _brightnessChanged: function() {
@@ -247,6 +246,9 @@ const BlyrPrefsWidget = new Lang.Class ({
                 this.brightness = this.brightness_slider.get_value();
                 // Save current brightness
                 this.settings.set_double("brightness", this.brightness);
+                // Apply effect if not applied
+                if(!this.texture.has_effects())
+                    this._previewClicked();
                 // Update preview
                 this._updatePreview();
                 return GLib.SOURCE_REMOVE;
@@ -274,7 +276,7 @@ function buildPrefsWidget() {
     // of the preferences dialog accessible. 
     try {
         // Init GtkClutter and Clutter
-        GtkClutter.init(null);
+        GtkClutter.init();
         Clutter.init(null);
         clutterinit = true;
     } catch(err) {
