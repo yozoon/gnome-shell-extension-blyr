@@ -5,7 +5,7 @@
 Apply a Blur Effect to GNOME Shell UI elements
 
 ## Screenshots
-###Activities Background Blur:
+### Activities Background Blur:
 Overview with a blur intensity of 10:
 
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/img/Overview_10.png "Overview 10")
