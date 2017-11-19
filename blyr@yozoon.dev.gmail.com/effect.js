@@ -38,12 +38,7 @@
  
 const Lang = imports.lang;
 const Gio = imports.gi.Gio;
-const GLib = imports.gi.GLib;
 const Clutter = imports.gi.Clutter;
-const GObject = imports.gi.GObject;
-const Tweener = imports.tweener.tweener;
-
-
 const ExtensionUtils = imports.misc.extensionUtils;
 
 const Extension = ExtensionUtils.getCurrentExtension();
@@ -51,9 +46,6 @@ const Shared = Extension.imports.shared;
 
 const settings = Shared.getSettings(Shared.SCHEMA_NAME, 
     Extension.dir.get_child('schemas').get_path());
-
-const ANIMATION_TIME_MS = 200;
-const ANIMATION_STEPS = 10;
 
 var BlurEffect = new Lang.Class({
     Name : 'BlurEffect',
@@ -86,9 +78,6 @@ var BlurEffect = new Lang.Class({
     },
 
     updateUniforms: function(intensity, brightness) {
-        this.set_uniform_value('dir', this.direction);
-        this.set_uniform_value('width', this.width);
-        this.set_uniform_value('height', this.height);
         this.set_uniform_value('radius', intensity + 0.0001);
         this.set_uniform_value('brightness', brightness + 0.0001);
     },
@@ -104,5 +93,5 @@ var BlurEffect = new Lang.Class({
         let data = stream.read_bytes(size, null).get_data();
         stream.close(null);
         return data.toString();
-    },
+    }
 });

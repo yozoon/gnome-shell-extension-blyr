@@ -84,8 +84,8 @@ const BlyrPrefsWidget = new Lang.Class ({
         */
         if(this.showPreview) {
             // Effect Preview
-            this.previewBox = new Gtk.Box();
-            let embed = new GtkClutter.Embed();
+            this.previewBox = new Gtk.Box({expand: false });
+            let embed = new GtkClutter.Embed({ expand: false });
             embed.set_size_request(600, 150);
 
             // Get extension path
@@ -276,7 +276,7 @@ function buildPrefsWidget() {
     // of the preferences dialog accessible. 
     try {
         // Init GtkClutter and Clutter
-        GtkClutter.init();
+        GtkClutter.init(null);
         Clutter.init(null);
         clutterinit = true;
     } catch(err) {
