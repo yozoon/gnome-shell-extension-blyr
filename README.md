@@ -7,13 +7,16 @@ Apply a Blur Effect to GNOME Shell UI elements
 ## Screenshots
 ###Activities Background Blur:
 Overview with a blur intensity of 10:
+
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/img/Overview_10.png "Overview 10")
 
 Overview with a blur intensity of 30:
+
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/img/Overview_30.png "Overview 30")
 
 ### Panel Blur:
 GNOME Shell 3.26 only:
+
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/img/Panel_Blur.png "Panel Blur")
 
 ### Extension Preferences:
@@ -40,9 +43,11 @@ make local-uninstall
 ```
 
 ## Troubleshooting
-* On some Ubuntu installs the preferences dialog won't open. To fix the issue install the gtkclutter bindings as follows: 
+On some Ubuntu installs the preferences dialog won't open. To fix the issue install the gtkclutter bindings as follows: 
 
-  `sudo apt install gir1.2-gtkclutter-1.0`
+```bash
+sudo apt install gir1.2-gtkclutter-1.0
+```
 
 ## Donations
 If you like this extension, maybe consider donating to support its continuing development. :)
