@@ -1,6 +1,6 @@
 {
   "name": "Blyr",
-  "description": "Apply a Blur Effect to the Activities screen.",
+  "description": "Apply a Blur Effect to GNOME Shell UI elements.",
   "uuid": "blyr@yozoon.dev.gmail.com",
   "shell-version": [
     "3.18",
@@ -9,5 +9,5 @@
     "3.24"
   ],
   "url": "https://github.com/yozoon/gnome-shell-extension-blyr",
-  "version": 3
+  "version": 4
 }

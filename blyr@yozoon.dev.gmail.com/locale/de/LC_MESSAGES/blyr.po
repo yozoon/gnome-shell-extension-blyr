@@ -7,32 +7,37 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Blyr\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-09-17 10:36+0200\n"
-"PO-Revision-Date: 2017-09-17 19:59+0200\n"
-"Language: de\n"
+"POT-Creation-Date: 2017-09-17 19:58+0200\n"
+"PO-Revision-Date: 2017-11-19 14:24+0100\n"
+"Language-Team: Jonatan Hatakeyama Zeidler\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Last-Translator: Jonatan Hatakeyama Zeidler <jonatan_zeidler@gmx.de>\n"
-"Language-Team: Jonatan Hatakeyama Zeidler\n"
-"X-Generator: Poedit 2.0.1\n"
+"X-Generator: Poedit 2.0.4\n"
+"Last-Translator: \n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Language: de\n"
 
-#: prefs.js:86
-msgid "Blur Radius"
-msgstr "Unschärferadius"
+#: prefs.js:123
+msgid "Apply Effect to"
+msgstr "Effekt anwenden auf"
 
-#: prefs.js:120
-msgid "Disable Overview Vignette Effect"
-msgstr "Rand abblenden deaktivieren"
+#: prefs.js:134
+msgid "Panel"
+msgstr "Panel"
 
 #: prefs.js:135
-msgid "Dim Overview background"
-msgstr "Übersichthintergrund abblenden"
+msgid "Activities Screen"
+msgstr "Aktivitäten-Übersicht"
 
-#: prefs.js:149
-msgid "Overview background brightness"
-msgstr "Helligkeit des Übersichthintergrunds"
+#: prefs.js:136
+msgid "Activities + Panel"
+msgstr "Übersicht + Panel"
 
-#: prefs.js:163
-msgid "Animate Overview transition (experimental)"
-msgstr "Übersichtübergang animieren (experimentell)"
+#: prefs.js:153
+msgid "Blur Intensity"
+msgstr "Blur Intensität"
+
+#: prefs.js:172
+msgid "Activities Background Brightness"
+msgstr "Helligkeit der Aktivitäten-Übersicht"

@@ -17,22 +17,26 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: Poedit 2.0.1\n"
 
-#: prefs.js:86
-msgid "Blur Radius"
+#: prefs.js: 123
+msgid "Apply Effect to"
 msgstr ""
 
-#: prefs.js:120
-msgid "Disable Overview Vignette Effect"
+#: prefs.js: 134
+msgid "Panel"
 msgstr ""
 
-#: prefs.js:135
-msgid "Dim Overview background"
+#: prefs.js: 135
+msgid "Activities Screen"
 msgstr ""
 
-#: prefs.js:149
-msgid "Overview background brightness"
+#: prefs.js: 136
+msgid "Activities + Panel"
 msgstr ""
 
-#: prefs.js:163
-msgid "Animate Overview transition (experimental)"
+#: prefs.js:153
+msgid "Blur Intensity"
+msgstr ""
+
+#: prefs.js:172
+msgid "Activities Background Brightness"
 msgstr ""

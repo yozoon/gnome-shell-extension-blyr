@@ -38,13 +38,12 @@
 
 const Lang = imports.lang;
 const Meta = imports.gi.Meta;
-const Shell = imports.gi.Shell;
 const Clutter = imports.gi.Clutter;
 const GLib = imports.gi.GLib;
 const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
 const Overview = imports.ui.overview;
-const Background = imports.ui.background;
+const LoginManager = imports.misc.loginManager;
 const ExtensionUtils = imports.misc.extensionUtils;
 
 const Extension = ExtensionUtils.getCurrentExtension();
@@ -52,9 +51,6 @@ const Effect = Extension.imports.effect;
 const Shared = Extension.imports.shared;
 const settings = Shared.getSettings(Shared.SCHEMA_NAME, 
     Extension.dir.get_child('schemas').get_path());
-
-// Note: do this using expension utils
-const UUID = "blyr@yozoon.dev.gmail.com";
 
 const eligibleForPanelBlur = Shared.isEligibleForPanelBlur();
 
@@ -84,8 +80,6 @@ const Blyr = new Lang.Class({
             // Default to activities_only
             this.mode = 2;
         }
-
-        //log("Mode = " + this.mode);
 
         // Get current settings
         this.intensity = settings.get_double("intensity");
@@ -169,17 +163,26 @@ const Blyr = new Lang.Class({
 
         // Monitors changed callback
         this.monitor_changed_connection = Main.layoutManager.connect('monitors-changed', Lang.bind(this, function() {
-            log("monitor setup changed");
             let pIndex_old = this.pIndex;
             // Monitor information
             this.pMonitor = Main.layoutManager.primaryMonitor;
             this.pIndex = Main.layoutManager.primaryIndex;
             this._regenerateBlurredActors();
         }));
+
+        // To fix unresponsive callbacks after hibernation, regenerate the callbacks after the session mode changed to 'user' again
+        this.session_mode_connection = Main.sessionMode.connect('updated', Lang.bind(this, function() {
+            if(Main.sessionMode.currentMode == 'user') {
+                this._connectCallbacks();
+                // Disable vignette effect
+                if(this.mode == 2 || this.mode == 3) {
+                    this._disableVignetteEffect();
+                }
+            }
+        }));
     },
 
     _regenerateBlurredActors: function() {
-        log("regenerate blurred actors");
         switch(this.mode) {
             case 1:
                 // panel_only
@@ -219,6 +222,9 @@ const Blyr = new Lang.Class({
         // Disconnect background change listener
         if(this.bg_changed_connection != undefined)
             Main.layoutManager._bgManagers[this.pIndex].disconnect(this.bg_changed_connection);
+        // Disconnect session mode listener
+        if(this.session_mode_connection != undefined)
+            Main.sessionMode.disconnect(this.session_mode_connection);
     },
 
     _connectOverviewListeners: function() {
@@ -415,7 +421,8 @@ const Blyr = new Lang.Class({
 
         // Get main panel box
         this.panelBox = Main.layoutManager.panelBox;
-        // Get current wallpaper (backgroundGroup seems to use a different indexing than monitors. It seems as if the primary background is always the first one)
+        // Get current wallpaper (backgroundGroup seems to use a different indexing than monitors. 
+        // It seems as if the primary background is always the first one)
         this.backgroundGroup = Main.layoutManager._backgroundGroup.get_children();
         let primaryBackground = this.backgroundGroup[0];
 
@@ -462,9 +469,11 @@ const Blyr = new Lang.Class({
 
     _removePanelBlur: function() {
         // Remove blurred panel background
-        this.panelBox.remove_child(this.bgContainer);
-        this.bgContainer = null;
-        this.panel_bg = null;
+        if(this.bgContainer != null) {
+            this.panelBox.remove_child(this.bgContainer);
+            this.bgContainer = null;
+            this.panel_bg = null;
+        }
     },
 
     disable: function() {
@@ -474,8 +483,7 @@ const Blyr = new Lang.Class({
         switch(this.mode) {
             case 1:
                 // Remove panel blur
-                if(eligibleForPanelBlur)
-                    this._removePanelBlur();
+                this._removePanelBlur();
                 break;
             case 2:
                 // Remove the modified background actor from the layoutManager's overview Group
@@ -487,8 +495,7 @@ const Blyr = new Lang.Class({
                 break;
             case 3:
                 // Remove panel blur
-                if(eligibleForPanelBlur)
-                        this._removePanelBlur();
+                this._removePanelBlur();
                 // Remove the modified background actor from the layoutManager's overview Group
                 Main.layoutManager.overviewGroup.remove_child(this.modifiedOverviewBackgroundGroup);
                 // Disconnect overview listeners

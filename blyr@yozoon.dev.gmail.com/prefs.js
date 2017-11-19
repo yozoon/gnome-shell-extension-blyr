@@ -84,7 +84,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         */
         if(this.showPreview) {
             // Effect Preview
-            this.previewBox = new Gtk.Box({expand: false });
+            this.previewBox = new Gtk.Box({ expand: false });
             let embed = new GtkClutter.Embed({ expand: false });
             embed.set_size_request(600, 150);
 
@@ -116,7 +116,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         ** MODE SELECTOR
         */
         if(eligibleForPanelBlur) {
-            this.selectBox = new Gtk.HBox({ spacing: 8, margin: 8 });
+            this.selectBox = new Gtk.HBox({ spacing: 8, margin: 8, homogeneous: true });
 
             // Select label
             this.select_label = new Gtk.Label({ halign : Gtk.Align.START });
@@ -126,7 +126,7 @@ const BlyrPrefsWidget = new Lang.Class ({
             this.model = new Gtk.ListStore();
             this.model.set_column_types([GObject.TYPE_INT, GObject.TYPE_STRING]);
 
-            this.combobox = new Gtk.ComboBox({model: this.model});
+            this.combobox = new Gtk.ComboBox({model: this.model });
             let renderer = new Gtk.CellRendererText();
             this.combobox.pack_start(renderer, true);
             this.combobox.add_attribute(renderer, 'text', 1);
@@ -169,7 +169,7 @@ const BlyrPrefsWidget = new Lang.Class ({
 
         // Brightness label
         let brightness_label = new Gtk.Label({ halign : Gtk.Align.START });
-        brightness_label.set_markup("<b>"+_("Overview Background Brightness")+"</b>");
+        brightness_label.set_markup("<b>"+_("Activities Background Brightness")+"</b>");
         
         // Brightness slider
         this.brightness_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.0, 1.0,0.01);
