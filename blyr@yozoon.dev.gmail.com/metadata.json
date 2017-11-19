@@ -3,10 +3,10 @@
   "description": "Apply a Blur Effect to GNOME Shell UI elements.",
   "uuid": "blyr@yozoon.dev.gmail.com",
   "shell-version": [
-    "3.18",
     "3.20",
     "3.22",
-    "3.24"
+    "3.24",
+    "3.26"
   ],
   "url": "https://github.com/yozoon/gnome-shell-extension-blyr",
   "version": 4
