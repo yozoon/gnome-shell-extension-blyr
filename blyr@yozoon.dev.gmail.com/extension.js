@@ -167,6 +167,7 @@ const Blyr = new Lang.Class({
             // Monitor information
             this.pMonitor = Main.layoutManager.primaryMonitor;
             this.pIndex = Main.layoutManager.primaryIndex;
+            this._connectCallbacks();
             this._regenerateBlurredActors();
         }));
 
@@ -374,31 +375,32 @@ const Blyr = new Lang.Class({
 
         // Update backgrounds to prevent ghost actors
         Main.overview._updateBackgrounds();
+        
+        // Create copies of background actors
+        Main.overview._backgroundGroup.get_children().forEach(
+            Lang.bind(this, function(bg) {
+                bg.vignette = false;
+                bg.brightness = 1.0;
+                // Clone the background actor
+                this.bgActor = new Meta.BackgroundActor({
+                    name: "blurred",
+                    background: bg.background,
+                    "meta-screen": bg["meta-screen"],
+                    width: bg["width"],
+                    height: bg["height"],
+                    monitor: bg["monitor"],
+                    x: bg["x"],
+                    y: bg["y"]
+                });
 
-        // Get all overview backgrounds
-        let backgrounds = Main.overview._backgroundGroup.get_children();
-        // Create initial copy of background actors
-        for(let i = 0; i < backgrounds.length; i++) {
-            backgrounds[i].vignette = false;
-            backgrounds[i].brightness = 1.0;
-            // Clone the background actor
-            let bgActor = new Meta.BackgroundActor({
-                name: "blurred",
-                background: backgrounds[i].background,
-                "meta-screen": backgrounds[i]["meta-screen"],
-                width: backgrounds[i]["width"],
-                height: backgrounds[i]["height"],
-                monitor: backgrounds[i]["monitor"],
-                x: backgrounds[i]["x"],
-                y: backgrounds[i]["y"]
-            });
+                // Apply blur effect
+                this._applyTwoPassBlur(this.bgActor);
 
-            // Apply blur effect
-            this._applyTwoPassBlur(bgActor);
+                // Add child to our modified BG actor
+                this.modifiedOverviewBackgroundGroup.add_child(this.bgActor);
 
-            // Add child to our modified BG actor
-            this.modifiedOverviewBackgroundGroup.add_child(bgActor);
-        }
+                this.bgActor = null;
+        }));
     },
 
     _updateOverviewBackgrounds: function() {
@@ -423,8 +425,7 @@ const Blyr = new Lang.Class({
         this.panelBox = Main.layoutManager.panelBox;
         // Get current wallpaper (backgroundGroup seems to use a different indexing than monitors. 
         // It seems as if the primary background is always the first one)
-        this.backgroundGroup = Main.layoutManager._backgroundGroup.get_children();
-        let primaryBackground = this.backgroundGroup[0];
+        this.primaryBackground = Main.layoutManager._backgroundGroup.get_children()[0];
 
         // Remove panel background if it's already attached
         if(this.panelBox.get_n_children() > 1 && this.bgContainer != undefined) {
@@ -442,15 +443,16 @@ const Blyr = new Lang.Class({
         // it without influencing the main desktop background)
         this.panel_bg = new Meta.BackgroundActor ({
             name: "panel_bg",
-            background: primaryBackground["background"],
-            "meta-screen": primaryBackground["meta-screen"],
-            width: this.pMonitor.width,
+            background: this.primaryBackground["background"],
+            "meta-screen": this.primaryBackground["meta-screen"],
+            width: this.pMonitor.width+2,
             height: this.panelBox.height*2, /* Needed to reduce edge darkening caused by high blur intensities */
+            x: -1,
             y: -1
         });
 
         // Only show one part of the panel background actor as large as the panel itself
-        this.panel_bg.set_clip(0, 0, this.pMonitor.width, this.panelBox.height)
+        this.panel_bg.set_clip(0, 0, this.pMonitor.width+2, this.panelBox.height)
 
         // Apply the blur effect to the panel background
         this._applyTwoPassBlur(this.panel_bg);
