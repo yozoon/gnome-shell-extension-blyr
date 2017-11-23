@@ -39,11 +39,9 @@
 const Lang = imports.lang;
 const Meta = imports.gi.Meta;
 const Clutter = imports.gi.Clutter;
-const GLib = imports.gi.GLib;
 const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
 const Overview = imports.ui.overview;
-const LoginManager = imports.misc.loginManager;
 const ExtensionUtils = imports.misc.extensionUtils;
 
 const Extension = ExtensionUtils.getCurrentExtension();
@@ -185,7 +183,7 @@ const Blyr = new Lang.Class({
             Lang.bind(this, function() {
             if(Main.sessionMode.currentMode == 'user') {
                 this._connectCallbacks();
-                // Disable vignette effect
+                // Disable vignette effect if overview blur is enabled
                 if(this.mode == 2 || this.mode == 3) {
                     this._disableVignetteEffect();
                 }
@@ -349,6 +347,7 @@ const Blyr = new Lang.Class({
     },
 
     _fadeIn: function(actor) {
+        // Transition animation: change opacity to 255 (fully opaque)
         Tweener.addTween(actor, 
         {
             opacity: 255,
@@ -358,6 +357,7 @@ const Blyr = new Lang.Class({
     },
 
     _fadeOut: function(actor) {
+        // Transition animation: change opacity to 0 (fully transparent)
         Tweener.addTween(actor, 
         {
             opacity: 0,
@@ -423,6 +423,7 @@ const Blyr = new Lang.Class({
     },
 
     _updateOverviewBackgrounds: function() {
+        // Remove and reapply blur effect for each actor
         this.modifiedOverviewBackgroundGroup.get_children().forEach(
             Lang.bind(this, function(actor) {
                 actor.clear_effects();
@@ -436,12 +437,9 @@ const Blyr = new Lang.Class({
     },
 
     _applyPanelBlur: function() {
-        // Get primary monitor and its index
-        this.pMonitor = Main.layoutManager.primaryMonitor;
-        this.pIndex = Main.layoutManager.primaryIndex;
-
         // Get main panel box
         this.panelBox = Main.layoutManager.panelBox;
+
         // Get current wallpaper (backgroundGroup seems to use a different 
         // indexing than monitors. It seems as if the primary background 
         // is always the first one)
@@ -469,6 +467,7 @@ const Blyr = new Lang.Class({
             name: "panel_bg",
             background: this.primaryBackground["background"],
             "meta-screen": this.primaryBackground["meta-screen"],
+            monitor: this.primaryBackground["monitor"],
             width: this.pMonitor.width+2,
             /* Needed to reduce edge darkening caused by high blur intensities */
             height: this.panelBox.height*2,
