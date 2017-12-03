@@ -70,10 +70,11 @@ const BlyrPrefsWidget = new Lang.Class ({
 
         this.showPreview = showPreview;
         this.intensity_timeout = 0;
-        this.brightness_timeout = 0;
+        this.activities_brightness_timeout = 0;
         this.mode = this.settings.get_int("mode");
         this.intensity = this.settings.get_double("intensity");
-        this.brightness = this.settings.get_double("brightness");
+        this.activities_brightness = this.settings.get_double("activitiesbrightness");
+        this.panel_brightness = this.settings.get_double("panelbrightness");
 
         this._buildUI();
     },
@@ -98,9 +99,9 @@ const BlyrPrefsWidget = new Lang.Class ({
             });
 
             // Apply blur
-            this.vertical_blur = new Effect.BlurEffect(this.texture.width, this.texture.height, 0, this.intensity, this.brightness);
+            this.vertical_blur = new Effect.BlurEffect(this.texture.width, this.texture.height, 0, this.intensity, this.activities_brightness);
             this.texture.add_effect_with_name('vertical_blur', this.vertical_blur);
-            this.horizontal_blur = new Effect.BlurEffect(this.texture.width, this.texture.height, 1, this.intensity, this.brightness);
+            this.horizontal_blur = new Effect.BlurEffect(this.texture.width, this.texture.height, 1, this.intensity, this.activities_brightness);
             this.texture.add_effect_with_name('vertical_blur', this.horizontal_blur);
 
             // Add the clutter texture to the gtk embed
@@ -163,23 +164,44 @@ const BlyrPrefsWidget = new Lang.Class ({
         this.intensityBox.pack_start(this.intensity_slider, true, true, 0);
 
         /*
-        ** BRIGHTNESS
+        ** ACTIVITIES BRIGHTNESS
         */
-        this.brightnessBox = new Gtk.HBox({ spacing: 8, margin: 8, homogeneous: true });
+        this.activities_brightnessBox = new Gtk.HBox({ spacing: 8, margin: 8, homogeneous: true });
 
         // Brightness label
         let brightness_label = new Gtk.Label({ halign : Gtk.Align.START });
         brightness_label.set_markup("<b>"+_("Activities Background Brightness")+"</b>");
         
         // Brightness slider
-        this.brightness_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.0, 1.0,0.01);
-        this.brightness_slider.set_value(this.brightness);
+        this.activities_brightness_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.0, 1.0,0.01);
+        this.activities_brightness_slider.set_value(this.activities_brightness);
 
         // Connect value-changed callback
-        this.brightness_slider.connect('value-changed', Lang.bind(this, this._brightnessChanged));
+        this.activities_brightness_slider.connect('value-changed', Lang.bind(this, this._activitiesBrightnessChanged));
 
-        this.brightnessBox.pack_start(brightness_label, true, true, 0);
-        this.brightnessBox.pack_start(this.brightness_slider, true, true, 0);
+        this.activities_brightnessBox.pack_start(brightness_label, true, true, 0);
+        this.activities_brightnessBox.pack_start(this.activities_brightness_slider, true, true, 0);
+
+        /*
+        ** PANEL BRIGHTNESS
+        */
+        if(eligibleForPanelBlur) {
+            this.panelBrightnessBox = new Gtk.HBox({ spacing: 8, margin: 8, homogeneous: true });
+
+            // Brightness label
+            let panel_brightness_label = new Gtk.Label({ halign : Gtk.Align.START });
+            panel_brightness_label.set_markup("<b>"+_("Panel Background Brightness")+"</b>");
+            
+            // Brightness slider
+            this.panel_brightness_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.0, 1.0,0.01);
+            this.panel_brightness_slider.set_value(this.panel_brightness);
+
+            // Connect value-changed callback
+            this.panel_brightness_slider.connect('value-changed', Lang.bind(this, this._panelBrightnessChanged));
+
+            this.panelBrightnessBox.pack_start(panel_brightness_label, true, true, 0);
+            this.panelBrightnessBox.pack_start(this.panel_brightness_slider, true, true, 0);
+        }
 
         /*
         ** ATTACH WIDGETS TO PARENT
@@ -196,7 +218,11 @@ const BlyrPrefsWidget = new Lang.Class ({
         this.pack_start(this.intensityBox, false, false, 0);
 
         // Brightness slider
-        this.pack_start(this.brightnessBox, false, false, 0);
+        this.pack_start(this.activities_brightnessBox, false, false, 0);
+
+        // Panel brightness slider
+        if(eligibleForPanelBlur)
+            this.pack_start(this.panelBrightnessBox, false, false, 0);
     },
 
     _previewClicked: function() {
@@ -236,16 +262,16 @@ const BlyrPrefsWidget = new Lang.Class ({
             }));
     },
 
-    _brightnessChanged: function() {
-        if (this.brightness_timeout > 0)
-            Mainloop.source_remove(this.brightness_timeout);
+    _activitiesBrightnessChanged: function() {
+        if (this.activities_brightness_timeout > 0)
+            Mainloop.source_remove(this.activities_brightness_timeout);
         // Delay updating so we don't get overrun by effect updates
-        this.brightness_timeout = Mainloop.timeout_add(UPDATE_TIMEOUT, Lang.bind(this, 
+        this.activities_brightness_timeout = Mainloop.timeout_add(UPDATE_TIMEOUT, Lang.bind(this, 
             function() {
                 // Get brightness from scale
-                this.brightness = this.brightness_slider.get_value();
+                this.activities_brightness = this.activities_brightness_slider.get_value();
                 // Save current brightness
-                this.settings.set_double("brightness", this.brightness);
+                this.settings.set_double("activitiesbrightness", this.activities_brightness);
                 // Apply effect if not applied
                 if(!this.texture.has_effects())
                     this._previewClicked();
@@ -255,11 +281,25 @@ const BlyrPrefsWidget = new Lang.Class ({
             }));
     },
 
+    _panelBrightnessChanged: function() {
+        if (this.panel_brightness_timeout > 0)
+            Mainloop.source_remove(this.panel_brightness_timeout);
+        // Delay updating so we don't get overrun by effect updates
+        this.panel_brightness_timeout = Mainloop.timeout_add(UPDATE_TIMEOUT, Lang.bind(this, 
+            function() {
+                // Get brightness from scale
+                this.panel_brightness = this.panel_brightness_slider.get_value();
+                // Save current brightness
+                this.settings.set_double("panelbrightness", this.panel_brightness);
+                return GLib.SOURCE_REMOVE;
+            }));
+    },
+
     _updatePreview: function() {
         if(this.showPreview) {
             // Update effects with new values
-            this.vertical_blur.updateUniforms(this.intensity, this.brightness);
-            this.horizontal_blur.updateUniforms(this.intensity, this.brightness);
+            this.vertical_blur.updateUniforms(this.intensity, this.activities_brightness);
+            this.horizontal_blur.updateUniforms(this.intensity, this.activities_brightness);
         }
     }
 });

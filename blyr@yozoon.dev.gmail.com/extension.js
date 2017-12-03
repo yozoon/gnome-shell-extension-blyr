@@ -43,6 +43,7 @@ const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
 const Overview = imports.ui.overview;
 const ExtensionUtils = imports.misc.extensionUtils;
+const LoginManager = imports.misc.loginManager;
 
 const Extension = ExtensionUtils.getCurrentExtension();
 const Effect = Extension.imports.effect;
@@ -85,7 +86,8 @@ const Blyr = new Lang.Class({
 
         // Get current settings
         this.intensity = settings.get_double("intensity");
-        this.brightness = settings.get_double("brightness");
+        this.activities_brightness = settings.get_double("activitiesbrightness");
+        this.panel_brightness = settings.get_double("panelbrightness");
 
         // Modify shell using current parameters and settings.
         this._startup();
@@ -133,15 +135,19 @@ const Blyr = new Lang.Class({
 
             // Store outdated settings
             let intensity_old = this.intensity;
-            let brightness_old = this.brightness;
+            let activities_brightness_old = this.activities_brightness;
+            let panel_brightness_old = this.panel_brightness;
 
             // Get current settings
             this.intensity = settings.get_double("intensity");
-            this.brightness = settings.get_double("brightness");
+            this.activities_brightness = settings.get_double("activitiesbrightness");
+            this.panel_brightness = settings.get_double("panelbrightness");
 
-            // If either blur intensity or brightness changed
+            // If either blur intensity, activities brightness or panel 
+            // brightness changed
             if(intensity_old != this.intensity || 
-                brightness_old != this.brightness) {
+                activities_brightness_old != this.activities_brightness ||
+                panel_brightness_old != this.panel_brightness ) {
                 switch(this.mode) {
                     case 1:
                         // panel_only
@@ -177,17 +183,26 @@ const Blyr = new Lang.Class({
             this._regenerateBlurredActors();
         }));
 
-        // To fix unresponsive callbacks after hibernation, regenerate the 
-        // callbacks after the session mode changed to 'user' again
+        // Connect prepare-to-sleep event to hide the blurred panel before 
+        // system goes to sleep. Prevents the panel from showing up on 
+        // screenshield and login screen.
+        this._loginManager = LoginManager.getLoginManager();
+        this.pfs_listener = this._loginManager.connect('prepare-for-sleep', 
+            Lang.bind(this, function() {
+            if([1, 3].indexOf(this.mode))
+                this._removePanelBlur();
+        }));
+
+        // To fix unresponsive callbacks after hibernation, regenerate them 
+        // after the session mode changed to 'user' again.
         this.session_mode_connection = Main.sessionMode.connect('updated', 
             Lang.bind(this, function() {
-            if(Main.sessionMode.currentMode == 'user') {
-                this._connectCallbacks();
-                // Disable vignette effect if overview blur is enabled
-                if(this.mode == 2 || this.mode == 3) {
-                    this._disableVignetteEffect();
+                if(Main.sessionMode.currentMode == 'user') {
+                    this._connectCallbacks();
+                    // Show the panel
+                    if([1, 3].indexOf(this.mode)) 
+                        this.panel_bg.show();
                 }
-            }
         }));
     },
 
@@ -235,6 +250,9 @@ const Blyr = new Lang.Class({
         // Disconnect session mode listener
         if(this.session_mode_connection != undefined)
             Main.sessionMode.disconnect(this.session_mode_connection);
+        // Disconnect prepare for sleep listener
+        if(this.pfs_listener != undefined)
+            this._loginManager.disconnect(this.pfs_listener);
     },
 
     _connectOverviewListeners: function() {
@@ -247,6 +265,9 @@ const Blyr = new Lang.Class({
                 function(actor) {
                 this._fadeOut(actor);
             }, this);
+            // Fade out the blurred panel actor
+            if([1, 3].indexOf(this.mode))
+                this._fadeOut(this.panelContainer);
         }));
         // Overview Hiding listener
         this.overview_hiding_connection = Main.overview.connect("hiding", 
@@ -257,17 +278,20 @@ const Blyr = new Lang.Class({
                 function(actor) {
                 this._fadeIn(actor);
             }, this);
+            // Fade in the blurred panel actor
+            if([1, 3].indexOf(this.mode))
+                this._fadeIn(this.panelContainer);
         }));
     },
 
     _disconnectOverviewListeners: function() {
         if(this.overview_showing_connection != undefined) {
             Main.overview.disconnect(this.overview_showing_connection);
-            this.overview_showing_connection = 0;
+            delete this.overview_showing_connection;
         }
         if(this.overview_hiding_connection != undefined) {
             Main.overview.disconnect(this.overview_hiding_connection);
-            this.overview_hiding_connection = 0;
+            delete this.overview_hiding_connection;
         }
     },
 
@@ -333,17 +357,16 @@ const Blyr = new Lang.Class({
         }
     },
 
-    _applyTwoPassBlur: function(actor) {
+    _applyTwoPassBlur: function(actor, brightness) {
         // Update effect settings
         this.intensity = settings.get_double("intensity");
-        this.brightness = settings.get_double("brightness");
         
         if(!actor.get_effect("vertical_blur"))
             actor.add_effect_with_name("vertical_blur", new Effect.BlurEffect(
-                actor.width, actor.height, 0, this.intensity, this.brightness));
+                actor.width, actor.height, 0, this.intensity, brightness));
         if(!actor.get_effect("horizontal_blur"))
             actor.add_effect_with_name("horizontal_blur", new Effect.BlurEffect(
-                actor.width, actor.height, 1, this.intensity, this.brightness));
+                actor.width, actor.height, 1, this.intensity, brightness));
     },
 
     _fadeIn: function(actor) {
@@ -389,6 +412,9 @@ const Blyr = new Lang.Class({
     },
 
     _createOverviewBackgrounds: function() {
+        // Get current activities background brighness value
+        this.activities_brightness = settings.get_double("activitiesbrightness");
+
         // Remove all children from modified background actor
         this.modifiedOverviewBackgroundGroup.remove_all_children();
 
@@ -405,29 +431,31 @@ const Blyr = new Lang.Class({
                     name: "blurred",
                     background: bg.background,
                     "meta-screen": bg["meta-screen"],
-                    width: bg["width"],
-                    height: bg["height"],
+                    width: bg["width"]+2,
+                    height: bg["height"]+2,
                     monitor: bg["monitor"],
-                    x: bg["x"],
-                    y: bg["y"]
+                    x: bg["x"]-1,
+                    y: bg["y"]-1
                 });
 
                 // Apply blur effect
-                this._applyTwoPassBlur(this.bgActor);
+                this._applyTwoPassBlur(this.bgActor, this.activities_brightness);
 
                 // Add child to our modified BG actor
                 this.modifiedOverviewBackgroundGroup.add_child(this.bgActor);
 
-                this.bgActor = null;
+                delete this.bgActor;
         }));
     },
 
     _updateOverviewBackgrounds: function() {
+        // Get current activities background brighness value
+        this.activities_brightness = settings.get_double("activitiesbrightness");
         // Remove and reapply blur effect for each actor
         this.modifiedOverviewBackgroundGroup.get_children().forEach(
             Lang.bind(this, function(actor) {
                 actor.clear_effects();
-                this._applyTwoPassBlur(actor);
+                this._applyTwoPassBlur(actor, this.activities_brightness);
             }));
     },
 
@@ -444,16 +472,15 @@ const Blyr = new Lang.Class({
         // indexing than monitors. It seems as if the primary background 
         // is always the first one)
         this.primaryBackground = Main.layoutManager._backgroundGroup.get_children()[0];
-
         // Remove panel background if it's already attached
         if(this.panelBox.get_n_children() > 1 && 
-            this.bgContainer != undefined) {
-            this.panelBox.remove_child(this.bgContainer);
+            this.panelContainer != undefined) {
+            this.panelBox.remove_child(this.panelContainer);
         }
 
         // Clutter Actor with height 0 which will contain the actual blurred 
         // background
-        this.bgContainer = new Clutter.Actor({
+        this.panelContainer = new Clutter.Actor({
             width: this.pMonitor.width,
             height: 0,
             /* Needed to ensure proper positioning behind the panel */
@@ -479,34 +506,35 @@ const Blyr = new Lang.Class({
         // panel itself
         this.panel_bg.set_clip(0, 0, this.pMonitor.width+2, this.panelBox.height);
 
+        // Get current panel brightness value
+        this.panel_brightness = settings.get_double("panelbrightness");
+
         // Apply the blur effect to the panel background
-        this._applyTwoPassBlur(this.panel_bg);
+        this._applyTwoPassBlur(this.panel_bg, this.panel_brightness);
 
         // Add the background texture to the background container
-        this.bgContainer.add_actor(this.panel_bg);
+        this.panelContainer.add_actor(this.panel_bg);
 
         // Add the background container to the system panel box
-        this.panelBox.add_actor(this.bgContainer);
+        this.panelBox.add_actor(this.panelContainer);
     },
 
     _updatePanelBlur: function() {
         this.panel_bg.clear_effects();
-        this._applyTwoPassBlur(this.panel_bg);
+        this.panel_brightness = settings.get_double("panelbrightness");
+        this._applyTwoPassBlur(this.panel_bg, this.panel_brightness);
     },
 
     _removePanelBlur: function() {
         // Remove blurred panel background
-        if(this.bgContainer != null) {
-            this.panelBox.remove_child(this.bgContainer);
-            this.bgContainer = null;
-            this.panel_bg = null;
+        if(this.panelContainer != undefined) {
+            this.panelBox.remove_child(this.panelContainer);
+            delete this.panelContainer;
+            delete this.panel_bg;
         }
     },
 
-    disable: function() {
-        // Disconnect Listeners
-        this._disconnectListeners();
-
+    _restoreUI: function() {
         switch(this.mode) {
             case 1:
                 // Remove panel blur
@@ -535,6 +563,13 @@ const Blyr = new Lang.Class({
                 this._restoreVignetteEffect();
                 break;
         }
+    },
+
+    disable: function() {
+        // Disconnect Listeners
+        this._disconnectListeners();
+        // Restore user interface
+        this._restoreUI();
     }
 });
 
@@ -548,5 +583,5 @@ function enable() {
 
 function disable() {
     blyr.disable();
-    blyr = null;
+    delete blyr;
 };

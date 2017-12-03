@@ -7,10 +7,15 @@
       <summary>Blur intensity</summary>
       <description>Influences the blur effect strenght</description>
     </key>
-    <key type="d" name="brightness">
+    <key type="d" name="activitiesbrightness">
       <default>0.7</default>
       <summary>Brightness value</summary>
-      <description>Sets the brightness of the Overview background</description>
+      <description>Sets the brightness of the Activities background</description>
+    </key>
+    <key type="d" name="panelbrightness">
+      <default>1.0</default>
+      <summary>Brightness value</summary>
+      <description>Sets the brightness of the Panel background</description>
     </key>
     <key type="i" name="mode">
       <default>2</default>

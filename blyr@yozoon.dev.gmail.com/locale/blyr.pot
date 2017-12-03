@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Blyr\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-09-17 19:58+0200\n"
+"POT-Creation-Date: 2017-12-03 16:24+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Jonatan Hatakeyama Zeidler\n"
@@ -39,4 +39,8 @@ msgstr ""
 
 #: prefs.js:172
 msgid "Activities Background Brightness"
+msgstr ""
+
+#: prefs.js:193
+msgid "Panel Background Brightness"
 msgstr ""
