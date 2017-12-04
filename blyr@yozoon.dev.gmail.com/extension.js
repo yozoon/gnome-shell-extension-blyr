@@ -102,6 +102,8 @@ const Blyr = new Lang.Class({
                 // panel_only
                 // Apply panel blur
                 this._applyPanelBlur();
+                // Dim activities screen with brightness set from preferences
+                this._overrideVignetteEffect();
                 break;
             case 2:
                 // activities_only
@@ -189,7 +191,7 @@ const Blyr = new Lang.Class({
         this._loginManager = LoginManager.getLoginManager();
         this.pfs_listener = this._loginManager.connect('prepare-for-sleep', 
             Lang.bind(this, function() {
-            if([1, 3].indexOf(this.mode))
+            if([1, 3].indexOf(this.mode) > -1)
                 this._removePanelBlur();
         }));
 
@@ -198,9 +200,10 @@ const Blyr = new Lang.Class({
         this.session_mode_connection = Main.sessionMode.connect('updated', 
             Lang.bind(this, function() {
                 if(Main.sessionMode.currentMode == 'user') {
+                    this._disconnectListeners();
                     this._connectCallbacks();
                     // Show the panel
-                    if([1, 3].indexOf(this.mode)) 
+                    if([1, 3].indexOf(this.mode) > -1) 
                         this.panel_bg.show();
                 }
         }));
@@ -213,6 +216,8 @@ const Blyr = new Lang.Class({
                 // Recreate panel background blur actor
                 this._removePanelBlur();
                 this._applyPanelBlur();
+                // Dim activities screen with brightness set from preferences
+                this._overrideVignetteEffect();
                 break;
             case 2:
                 // activities_only
@@ -266,7 +271,7 @@ const Blyr = new Lang.Class({
                 this._fadeOut(actor);
             }, this);
             // Fade out the blurred panel actor
-            if([1, 3].indexOf(this.mode))
+            if([1, 3].indexOf(this.mode) > -1)
                 this._fadeOut(this.panelContainer);
         }));
         // Overview Hiding listener
@@ -279,7 +284,7 @@ const Blyr = new Lang.Class({
                 this._fadeIn(actor);
             }, this);
             // Fade in the blurred panel actor
-            if([1, 3].indexOf(this.mode))
+            if([1, 3].indexOf(this.mode) > -1)
                 this._fadeIn(this.panelContainer);
         }));
     },
@@ -329,7 +334,7 @@ const Blyr = new Lang.Class({
                 // Unregister overview showing/hiding callback
                 this._disconnectOverviewListeners();
                 // Restore the vignette Effect
-                this._restoreVignetteEffect();
+                this._overrideVignetteEffect();
                 // Apply panel blur
                 this._applyPanelBlur();
                 break;
@@ -345,7 +350,7 @@ const Blyr = new Lang.Class({
                 // Unregister overview showing/hiding callback
                 this._disconnectOverviewListeners();
                 // Restore the vignette Effect
-                this._restoreVignetteEffect();
+                this._overrideVignetteEffect();
                 break;
             case 32:
                 // The user switched from blur_both to activities_only
@@ -398,6 +403,38 @@ const Blyr = new Lang.Class({
         Main.overview._backgroundGroup.get_children().forEach(function(actor) {
             actor.vignette = false;
         }, null);
+    },
+
+    _overrideVignetteEffect: function() {
+        // Inject a new function handling the shading of the activities background
+        Main.overview._shadeBackgrounds = function() {
+            Main.overview._backgroundGroup.get_children().forEach(function(actor) {
+                this.activities_brightness = settings.get_double("activitiesbrightness");
+                actor.vignette = true;
+                actor.brightness = 1.0;
+                actor["vignette_sharpness"] = 0;
+                Tweener.addTween(actor,
+                                 { brightness: this.activities_brightness,
+                                   time: Overview.SHADE_ANIMATION_TIME,
+                                   transition: 'easeOutQuad'
+                                 });
+            }, this)
+        };
+
+        // Inject a new function handling the unshading of the activities background
+        Main.overview._unshadeBackgrounds = function() {
+            Main.overview._backgroundGroup.get_children().forEach(function(actor) {
+                this.activities_brightness = settings.get_double("activitiesbrightness");
+                actor.vignette = true;
+                actor.brightness = this.activities_brightness;
+                actor["vignette_sharpness"] = 0;
+                Tweener.addTween(actor,
+                                 { brightness: 1.0,
+                                   time: Overview.SHADE_ANIMATION_TIME,
+                                   transition: 'easeOutQuad'
+                                 });
+            }, this)
+        };
     },
 
     _restoreVignetteEffect: function() {
@@ -547,8 +584,6 @@ const Blyr = new Lang.Class({
                     this.modifiedOverviewBackgroundGroup);
                 // Disconnect overview listeners
                 this._disconnectOverviewListeners();
-                // Restore vignette effect
-                this._restoreVignetteEffect();
                 break;
             case 3:
                 // Remove panel blur
@@ -559,10 +594,10 @@ const Blyr = new Lang.Class({
                     this.modifiedOverviewBackgroundGroup);
                 // Disconnect overview listeners
                 this._disconnectOverviewListeners();
-                // Restore vignette effect
-                this._restoreVignetteEffect();
                 break;
         }
+        // Restore vignette effect
+        this._restoreVignetteEffect();
     },
 
     disable: function() {
