@@ -40,10 +40,6 @@ const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const Config = imports.misc.config;
 
-const ACTIVITIES_ONLY = 'activities';
-const PANEL_ONLY = 'panel';
-const BLUR_BOTH = 'both';
-
 var SCHEMA_NAME = "org.gnome.shell.extensions.blyr";
 
 function getSettings(schemaName, schemaDir) {

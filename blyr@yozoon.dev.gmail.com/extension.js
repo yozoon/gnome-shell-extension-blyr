@@ -71,6 +71,8 @@ const Blyr = new Lang.Class({
             "z-position": -1 
         });
 
+        this.bgManager = Main.layoutManager._bgManagers[this.pIndex];
+
         // Add this background group to the layoutManager's overview Group
         Main.layoutManager.overviewGroup.add_child(
             this.modifiedOverviewBackgroundGroup);
@@ -169,7 +171,7 @@ const Blyr = new Lang.Class({
         }));
 
         // Background change listener 
-        this.bg_changed_connection = Main.layoutManager._bgManagers[this.pIndex].connect(
+        this.bg_changed_connection = this.bgManager.connect(
             'changed', Lang.bind(this, function() {
             this._regenerateBlurredActors();
         }));
@@ -181,31 +183,9 @@ const Blyr = new Lang.Class({
             // Monitor information
             this.pMonitor = Main.layoutManager.primaryMonitor;
             this.pIndex = Main.layoutManager.primaryIndex;
+            this._disconnectListeners();
             this._connectCallbacks();
             this._regenerateBlurredActors();
-        }));
-
-        // Connect prepare-to-sleep event to hide the blurred panel before 
-        // system goes to sleep. Prevents the panel from showing up on 
-        // screenshield and login screen.
-        this._loginManager = LoginManager.getLoginManager();
-        this.pfs_listener = this._loginManager.connect('prepare-for-sleep', 
-            Lang.bind(this, function() {
-            if([1, 3].indexOf(this.mode) > -1)
-                this._removePanelBlur();
-        }));
-
-        // To fix unresponsive callbacks after hibernation, regenerate them 
-        // after the session mode changed to 'user' again.
-        this.session_mode_connection = Main.sessionMode.connect('updated', 
-            Lang.bind(this, function() {
-                if(Main.sessionMode.currentMode == 'user') {
-                    this._disconnectListeners();
-                    this._connectCallbacks();
-                    // Show the panel
-                    if([1, 3].indexOf(this.mode) > -1) 
-                        this.panel_bg.show();
-                }
         }));
     },
 
@@ -250,8 +230,7 @@ const Blyr = new Lang.Class({
             Main.layoutManager.disconnect(this.monitor_changed_connection);
         // Disconnect background change listener
         if(this.bg_changed_connection != undefined)
-            Main.layoutManager._bgManagers[this.pIndex].disconnect(
-                this.bg_changed_connection);
+            this.bgManager.disconnect(this.bg_changed_connection);
         // Disconnect session mode listener
         if(this.session_mode_connection != undefined)
             Main.sessionMode.disconnect(this.session_mode_connection);
@@ -268,7 +247,8 @@ const Blyr = new Lang.Class({
             // our copied actors.
             Main.overview._backgroundGroup.get_children().forEach(
                 function(actor) {
-                this._fadeOut(actor);
+                    if(actor.is_realized())
+                        this._fadeOut(actor);
             }, this);
             // Fade out the blurred panel actor
             if([1, 3].indexOf(this.mode) > -1)
@@ -281,7 +261,8 @@ const Blyr = new Lang.Class({
             // our copied actors.
             Main.overview._backgroundGroup.get_children().forEach(
                 function(actor) {
-                this._fadeIn(actor);
+                    if(actor.is_realized())
+                        this._fadeIn(actor);
             }, this);
             // Fade in the blurred panel actor
             if([1, 3].indexOf(this.mode) > -1)
