@@ -179,11 +179,11 @@ const Blyr = new Lang.Class({
         // Monitors changed callback
         this.monitor_changed_connection = Main.layoutManager.connect(
             'monitors-changed', Lang.bind(this, function() {
-            let pIndex_old = this.pIndex;
+            this._disconnectListeners();
             // Monitor information
             this.pMonitor = Main.layoutManager.primaryMonitor;
             this.pIndex = Main.layoutManager.primaryIndex;
-            this._disconnectListeners();
+            this.bgManager = Main.layoutManager._bgManagers[this.pIndex];
             this._connectCallbacks();
             this._regenerateBlurredActors();
         }));
