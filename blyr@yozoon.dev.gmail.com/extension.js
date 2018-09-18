@@ -250,9 +250,6 @@ const Blyr = new Lang.Class({
                     if(actor.is_realized())
                         this._fadeOut(actor);
             }, this);
-            // Fade out the blurred panel actor
-            if([1, 3].indexOf(this.mode) > -1)
-                this._fadeOut(this.panelContainer);
         }));
         // Overview Hiding listener
         this.overview_hiding_connection = Main.overview.connect("hiding", 
@@ -264,20 +261,15 @@ const Blyr = new Lang.Class({
                     if(actor.is_realized())
                         this._fadeIn(actor);
             }, this);
-            // Fade in the blurred panel actor
-            if([1, 3].indexOf(this.mode) > -1)
-                this._fadeIn(this.panelContainer);
         }));
     },
 
     _disconnectOverviewListeners: function() {
         if(this.overview_showing_connection != undefined) {
             Main.overview.disconnect(this.overview_showing_connection);
-            delete this.overview_showing_connection;
         }
         if(this.overview_hiding_connection != undefined) {
             Main.overview.disconnect(this.overview_hiding_connection);
-            delete this.overview_hiding_connection;
         }
     },
 
@@ -448,7 +440,6 @@ const Blyr = new Lang.Class({
                 this.bgActor = new Meta.BackgroundActor({
                     name: "blurred",
                     background: bg.background,
-                    "meta-screen": bg["meta-screen"],
                     width: bg["width"]+2,
                     height: bg["height"]+2,
                     monitor: bg["monitor"],
@@ -461,8 +452,6 @@ const Blyr = new Lang.Class({
 
                 // Add child to our modified BG actor
                 this.modifiedOverviewBackgroundGroup.add_child(this.bgActor);
-
-                delete this.bgActor;
         }));
     },
 
@@ -511,7 +500,6 @@ const Blyr = new Lang.Class({
         this.panel_bg = new Meta.BackgroundActor ({
             name: "panel_bg",
             background: this.primaryBackground["background"],
-            "meta-screen": this.primaryBackground["meta-screen"],
             monitor: this.primaryBackground["monitor"],
             width: this.pMonitor.width+2,
             /* Needed to reduce edge darkening caused by high blur intensities */
@@ -547,8 +535,6 @@ const Blyr = new Lang.Class({
         // Remove blurred panel background
         if(this.panelContainer != undefined) {
             this.panelBox.remove_child(this.panelContainer);
-            delete this.panelContainer;
-            delete this.panel_bg;
         }
     },
 
@@ -599,5 +585,4 @@ function enable() {
 
 function disable() {
     blyr.disable();
-    delete blyr;
 };
