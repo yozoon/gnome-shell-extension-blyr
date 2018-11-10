@@ -7,20 +7,21 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Blyr\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-11-30 11:26+0100\n"
-"PO-Revision-Date: 2017-11-30 19:56+0100\n"
+"POT-Creation-Date: 2017-12-03 16:24+0100\n"
+"PO-Revision-Date: 2018-11-09 21:47+0100\n"
+"Last-Translator: Piotr Komur <pkomur@gmail.com>\n"
 "Language-Team: Piotr Komur\n"
+"Language: pl\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 2.0.4\n"
-"Last-Translator: Piotr Komur <pkomur@gmail.com>\n"
-"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
-"Language: pl\n"
+"X-Generator: Poedit 2.2\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 "
+"|| n%100>=20) ? 1 : 2);\n"
 
 #: prefs.js:123
 msgid "Apply Effect to"
-msgstr "Zastosuj efekty dla"
+msgstr "Zastosuj efekt dla"
 
 #: prefs.js:134
 msgid "Panel"
@@ -32,7 +33,7 @@ msgstr "Podgląd"
 
 #: prefs.js:136
 msgid "Activities + Panel"
-msgstr "Podgląd + Panel"
+msgstr "Podgląd i panel"
 
 #: prefs.js:153
 msgid "Blur Intensity"
@@ -40,4 +41,8 @@ msgstr "Intensywność rozmycia"
 
 #: prefs.js:172
 msgid "Activities Background Brightness"
-msgstr "Jasność tła dla Podglądu"
+msgstr "Jasność tła dla podglądu"
+
+#: prefs.js:193
+msgid "Panel Background Brightness"
+msgstr "Jasność tła dla panelu"
