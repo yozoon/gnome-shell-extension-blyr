@@ -15,7 +15,7 @@ Overview with a blur intensity of 30:
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/img/Overview_30.png "Overview 30")
 
 ### Panel Blur:
-GNOME Shell 3.26 only:
+GNOME Shell 3.26+:
 
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/img/Panel_Blur.png "Panel Blur")
 
@@ -43,7 +43,7 @@ make local-uninstall
 ```
 
 ## Troubleshooting
-On some Ubuntu installs the preferences dialog won't open. To fix the issue install the gtkclutter bindings as follows: 
+Some Ubuntu users reported that the preferences dialog didn't appear after opening it from the GNOME Tweaks application. To fix the issue install the gtkclutter bindings as follows:
 
 ```bash
 sudo apt install gir1.2-gtkclutter-1.0
