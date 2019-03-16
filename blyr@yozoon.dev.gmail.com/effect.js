@@ -40,6 +40,7 @@ const Lang = imports.lang;
 const Gio = imports.gi.Gio;
 const Clutter = imports.gi.Clutter;
 const ExtensionUtils = imports.misc.extensionUtils;
+const ByteArray = imports.byteArray;
 
 const Extension = ExtensionUtils.getCurrentExtension();
 const Shared = Extension.imports.shared;
@@ -92,6 +93,6 @@ var BlurEffect = new Lang.Class({
         let stream = input_file.read(null);
         let data = stream.read_bytes(size, null).get_data();
         stream.close(null);
-        return data.toString();
+        return ByteArray.toString(data); //data.toString();
     }
 });
