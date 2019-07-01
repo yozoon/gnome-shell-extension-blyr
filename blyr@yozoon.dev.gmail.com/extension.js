@@ -475,10 +475,11 @@ const Blyr = new Lang.Class({
         // Get main panel box
         this.panelBox = Main.layoutManager.panelBox;
 
-        // Get current wallpaper (backgroundGroup seems to use a different 
-        // indexing than monitors. It seems as if the primary background 
-        // is always the first one)
-        this.primaryBackground = Main.layoutManager._backgroundGroup.get_children()[0];
+        // Get wallpaper on primary monitor
+        this.bgList = Main.layoutManager._backgroundGroup.get_children();
+        bgIndex = this.bgList.length - global.display.get_primary_monitor() - 1;
+        this.primaryBackground = this.bgList[bgIndex];
+
         // Remove panel background if it's already attached
         if(this.panelBox.get_n_children() > 1 && 
             this.panelContainer != undefined) {
