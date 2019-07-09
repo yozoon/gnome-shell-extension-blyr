@@ -217,16 +217,16 @@ const Blyr = new Lang.Class({
     _disconnectListeners: function() {
         // Disconnect settings change connection
         if(this.settings_connection)
-            settings.disconnect(this.setting_changed_connection);
+            settings.disconnect(this.settings_connection);
         // Disconnect gsettings change connection
         if(this.gsettings_connection)
-            this.gsettings.disconnect(this.gsetting_changed_connection);
+            this.gsettings.disconnect(this.gsettings_connection);
         // Disconnect monitor changed connection
         if(this.monitor_connection)
-            Main.layoutManager.disconnect(this.monitor_changed_connection);
+            Main.layoutManager.disconnect(this.monitor_connection);
         // Disconnect background change listener
         if(this.bg_connection)
-            this.bgManager.disconnect(this.bg_changed_connection);
+            this.bgManager.disconnect(this.bg_connection);
         // Disconnect session mode listener
         if(this.session_mode_connection)
             Main.sessionMode.disconnect(this.session_mode_connection);
