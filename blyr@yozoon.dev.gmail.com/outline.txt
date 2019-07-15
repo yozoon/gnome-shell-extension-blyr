@@ -2,17 +2,6 @@ All transitions are animated using Tweener. So no "animate" setting is required 
 Every background needs its own blur effect because the shader uses the width and height of the actor to calculate the apropriate blur intensity.
 Fortunately we can access the Clutter effect of the actor using .get_effect("name"); so we just have to keep a list of the actors.
 
-
-4 bugs (so far):
-	- Wallpaper change creates one bg actor too much -> gets copied, and some metadata causes a crash of the mutter background actor instance
-	- Reapplying the same background from settings menu causes the background actor to appears as if the vignette effect was applied, even though the vignette property is set to false. 
-	- After certain value changes (settings change listener) with [BlurEffect].updateUniforms(...), the shader effect seems to forget the direction property of the glsl shader (only horizontal/ vertical blur).
-	- Blurred panel appears at screen shade and login screen after waking from hibernation
-
-
-
-
-
 Mode
 activities_only = 1
 panel_only = 2
@@ -92,4 +81,4 @@ In tweener:
 onComplete: Lang.bind(this, function() {
                     log("complete shade");
                 })
-                */
+*/

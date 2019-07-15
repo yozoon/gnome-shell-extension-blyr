@@ -1,0 +1,27 @@
+Luca Viggiani
+The extension windows-blur-effect written by Luca Viggiani 
+gave me lots of useful information about the general structure of GNOME Shell 
+extensions and connection callbacks.
+https://github.com/lviggiani/gnome-shell-extension-wbe/
+
+Florian Mounier
+The gnome-shell-shader-extension by Florian Mounier showed me how to implement 
+custom GLSL Shaders as Clutter Effects.
+https://github.com/paradoxxxzero/gnome-shell-shader-extension/
+
+Optimisme
+Credit also goes to GitHub user Optimisme, who made some great GJS examples 
+available, which helped me to get the general idea of how to use a GTK Embed.
+https://github.com/optimisme/gjs-examples
+
+Jonatan Hatakeyama Zeidler
+Implemented the translation framework for the extension and contributed the 
+German translation.
+https://github.com/jonnius
+
+Piotr Komur
+Contributed the Polish translation.
+https://github.com/pkomur
+
+Alice Charlotte Liddell
+Contributed the Ukrainian translation.
