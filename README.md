@@ -19,6 +19,8 @@ GNOME Shell 3.26+:
 
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/img/Panel_Blur.png "Panel Blur")
 
+With GNOME Shell version 3.32 panel transparency was removed. In order to use the blurred panel feature, you can install the Dynamic Panel Transparency ![extension](https://extensions.gnome.org/extension/1011/dynamic-panel-transparency/)
+
 ### Extension Preferences:
 ![](https://raw.githubusercontent.com/yozoon/gnome-shell-extension-blyr/master/img/Prefs_30.png "Prefs 30")
 
