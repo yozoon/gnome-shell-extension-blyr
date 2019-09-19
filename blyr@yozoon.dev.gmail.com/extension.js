@@ -9,7 +9,6 @@ const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const Clutter = imports.gi.Clutter;
 const Main = imports.ui.main;
-const Tweener = imports.ui.tweener;
 const Overview = imports.ui.overview;
 const ExtensionUtils = imports.misc.extensionUtils;
 const LoginManager = imports.misc.loginManager;
@@ -17,6 +16,7 @@ const LoginManager = imports.misc.loginManager;
 const Extension = ExtensionUtils.getCurrentExtension();
 const Effect = Extension.imports.effect;
 const Shared = Extension.imports.shared;
+const Kawase = Extension.imports.kawase;
 const settings = Shared.getSettings(Shared.SCHEMA_NAME, 
     Extension.dir.get_child('schemas').get_path());
 
@@ -31,6 +31,8 @@ function log(msg) {
         print("blyr.yozoon.dev.gmail.com: " + msg);
     }
 }
+
+const REGENERATION_TIMEOUT = 2*Overview.ANIMATION_TIME;
 
 class Blyr {
     constructor(params) {
@@ -56,6 +58,7 @@ class Blyr {
         this.overview_showing_connection = null;
         this.overview_hiding_connection = null;
 
+        this.bgcounter = 0;
 
         // Override mode if we can't blur the panel background
         // Default to activities_only
@@ -117,53 +120,63 @@ class Blyr {
         this.bgManager = Main.layoutManager._bgManagers[this.pIndex];
 
         // Settings changed listener
-        this.settings_connection = settings.connect("changed", 
-            function() {
-                if(eligibleForPanelBlur)
-                    this._checkModeChange();
+        this.settings_connection = settings.connect("changed", () => {
+            if(eligibleForPanelBlur)
+                this._checkModeChange();
 
-                // Store outdated settings
-                let intensity_old = this.intensity;
-                let activities_brightness_old = this.activities_brightness;
-                let panel_brightness_old = this.panel_brightness;
+            // Store outdated settings
+            let intensity_old = this.intensity;
+            let activities_brightness_old = this.activities_brightness;
+            let panel_brightness_old = this.panel_brightness;
 
-                // Get current settings
-                this.intensity = settings.get_double("intensity");
-                this.activities_brightness = settings.get_double("activitiesbrightness");
-                this.panel_brightness = settings.get_double("panelbrightness");
+            // Get current settings
+            this.intensity = settings.get_double("intensity");
+            this.activities_brightness = settings.get_double("activitiesbrightness");
+            this.panel_brightness = settings.get_double("panelbrightness");
 
-                // If either blur intensity, activities brightness or panel 
-                // brightness changed
-                if(intensity_old != this.intensity || 
-                    activities_brightness_old != this.activities_brightness ||
-                    panel_brightness_old != this.panel_brightness ) {
-                    switch(this.mode) {
-                        case 1:
-                            // panel_only
-                            this._updatePanelBlur();
-                            break;
-                        case 2:
-                            // activities_only
-                            this._updateOverviewBackgrounds();
-                            break;
-                        case 3:
-                            // blur_both
-                            this._updatePanelBlur();
-                            this._updateOverviewBackgrounds();
-                            break;
-                    }
+            // If either blur intensity, activities brightness or panel 
+            // brightness changed
+            if(intensity_old != this.intensity || 
+                activities_brightness_old != this.activities_brightness ||
+                panel_brightness_old != this.panel_brightness ) {
+                switch(this.mode) {
+                    case 1:
+                        // panel_only
+                        this._updatePanelBlur();
+                        break;
+                    case 2:
+                        // activities_only
+                        this._updateOverviewBackgrounds();
+                        break;
+                    case 3:
+                        // blur_both
+                        this._updatePanelBlur();
+                        this._updateOverviewBackgrounds();
+                        break;
                 }
-            }.bind(this)
-        );
+            }
+        });
+
+        this.background_change_triggered = false;
 
         // listens to changes of the wallpaper url in gsettings
         this.gsettings_connection = this.gsettings.connect('changed::picture-uri', 
-            this._regenerateBlurredActors.bind(this));
+            () => {
+                if(!this.background_change_triggered) {
+                    this.background_change_triggered = true;
+                    this._regenerateBlurredActors();
+                }
+            });
 
         // listens to changed signal on bg manager (useful if the url of a 
         // wallpaper doesn't change, but the wallpaper itself changed)
-        this.bg_connection = this.bgManager.connect('changed', 
-            this._regenerateBlurredActors.bind(this));
+        this.bg_connection = this.bgManager.connect('changed',
+            () => {
+                if(!this.background_change_triggered) {
+                    this.background_change_triggered = true;
+                    this._regenerateBlurredActors();
+                }
+            });
 
         // session mode listener used to recreate listeners in order to 
         // prevent unresponsive "orphan" listeners
@@ -172,11 +185,11 @@ class Blyr {
 
         // Monitors changed listener
         this.monitor_connection = Main.layoutManager.connect('monitors-changed', 
-            function() {
+            () => {
                 log("monitors changed");
                 this._regenerateBlurredActors();
                 this._connectListeners();
-            }.bind(this));
+            });
     }
 
     _disconnectListeners() {
@@ -211,28 +224,26 @@ class Blyr {
     _connectOverviewListeners() {
         // Overview showing listener
         this.overview_showing_connection = Main.overview.connect("showing", 
-            function() {
+            () => {
                 // Fade out the untouched overview background actors to reveal 
                 // our copied actors.
                 Main.overview._backgroundGroup.get_children().forEach(
-                    function(actor) {
+                    (actor) => {
                         if(actor.is_realized())
                             this._fadeOut(actor);
-                    }.bind(this));
-            }.bind(this)
-        );
+                    });
+            });
         // Overview Hiding listener
         this.overview_hiding_connection = Main.overview.connect("hiding", 
-            function() {
+            () => {
                 // Fade in the untouched overview background actors to cover 
                 // our copied actors.
                 Main.overview._backgroundGroup.get_children().forEach(
-                    function(actor) {
+                    (actor) => {
                         if(actor.is_realized())
                             this._fadeIn(actor);
-                    }.bind(this));
-            }.bind(this)
-        );
+                    });
+            });
     }
 
     _disconnectOverviewListeners() {
@@ -282,6 +293,7 @@ class Blyr {
                 break;
             case 23:
                 // The user switched from activities_only to blur_both
+                this._disableVignetteEffect();
                 // Apply blur to panel
                 this._applyPanelBlur();
                 break;
@@ -306,36 +318,35 @@ class Blyr {
 
     _regenerateBlurredActors() {
         log('regenerate actors');
-        // Delayed function call to give Tweener some time to fade out the old backgrounds
-        GLib.timeout_add(GLib.PRIORITY_LOW, 100, 
-            function() {
-                switch(this.mode) {
-                    case 1: // panel_only
-                        // Recreate panel background blur actor
-                        this._removePanelBlur();
-                        this._applyPanelBlur();
-                        // Dim activities screen with brightness set from preferences
-                        this._overrideVignetteEffect();
-                        break;
-                    case 2: // activities_only
-                        // Disable vignette effect
-                        this._disableVignetteEffect();
-                        // Recreate overview background blur actors
-                        this._createOverviewBackgrounds();
-                        break;
-                    case 3: // blur_both
-                        // Recreate panel background blur actor
-                        this._removePanelBlur();
-                        this._applyPanelBlur();
-                        // Disable vignette effect
-                        this._disableVignetteEffect();
-                        // Recreate overview background blur actors
-                        this._createOverviewBackgrounds();
-                        break;
-                }
-                return GLib.SOURCE_REMOVE;
-            }.bind(this)
-        );
+        // Delayed function call to give the shell some time to fade out the old backgrounds
+        GLib.timeout_add(GLib.PRIORITY_LOW, REGENERATION_TIMEOUT, () => {
+            this.background_change_triggered = false;
+            switch(this.mode) {
+                case 1: // panel_only
+                    // Recreate panel background blur actor
+                    this._removePanelBlur();
+                    this._applyPanelBlur();
+                    // Dim activities screen with brightness set from preferences
+                    this._overrideVignetteEffect();
+                    break;
+                case 2: // activities_only
+                    // Disable vignette effect
+                    this._disableVignetteEffect();
+                    // Recreate overview background blur actors
+                    this._createOverviewBackgrounds();
+                    break;
+                case 3: // blur_both
+                    // Recreate panel background blur actor
+                    this._removePanelBlur();
+                    this._applyPanelBlur();
+                    // Disable vignette effect
+                    this._disableVignetteEffect();
+                    // Recreate overview background blur actors
+                    this._createOverviewBackgrounds();
+                    break;
+            }
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     /***************************************************************
@@ -355,22 +366,47 @@ class Blyr {
 
     _fadeIn(actor) {
         // Transition animation: change opacity to 255 (fully opaque)
-        Tweener.addTween(actor, 
-        {
-            opacity: 255,
-            time: Overview.SHADE_ANIMATION_TIME,
-            transition: 'easeOutQuad'
+        actor.ease_property('opacity', 255, {
+            duration: Overview.SHADE_ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD
         });
     }
 
     _fadeOut(actor) {
         // Transition animation: change opacity to 0 (fully transparent)
-        Tweener.addTween(actor, 
-        {
-            opacity: 0,
-            time: Overview.SHADE_ANIMATION_TIME,
-            transition: 'easeOutQuad'
+        actor.ease_property('opacity', 0, {
+            duration: Overview.SHADE_ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD
         });
+    }
+
+    /***************************************************************
+     *                    Kawase Blur Effect                       *
+     ***************************************************************/
+    _apply_blur(actor, offset, iter) {
+        this._remove_blur(actor);
+        if(offset < 1)
+            offset = 1;
+
+        let down_fx = null;
+        let up_fx = null;
+        for(let i = 0; i<iter; i++) {
+            down_fx = new Kawase.KawaseDown(actor.width, actor.height, offset, offset);
+            up_fx = new Kawase.KawaseUp(actor.width, actor.height, offset, offset);
+            actor.add_effect(down_fx);
+            actor.add_effect(up_fx);
+            GLib.free(down_fx);
+            GLib.free(up_fx);
+        }
+        log("Num shaders: " + actor.get_effects().length);
+    }
+
+    _remove_blur(actor) {
+        actor.get_effects().forEach((effect) => {
+            actor.remove_effect(effect);
+            effect = null;
+        });
+        //actor.clear_effects();
     }
 
     /***************************************************************
@@ -383,40 +419,38 @@ class Blyr {
         Main.overview._unshadeBackgrounds = function(){};
 
         // Disable the vignette effect for each actor
-        Main.overview._backgroundGroup.get_children().forEach(function(actor) {
+        Main.overview._backgroundGroup.get_children().forEach((actor) => {
             actor.vignette = false;
-        }, null);
+        });
     }
 
     _overrideVignetteEffect() {
         // Inject a new function handling the shading of the activities background
         Main.overview._shadeBackgrounds = function() {
-            Main.overview._backgroundGroup.get_children().forEach(function(actor) {
+            Main.overview._backgroundGroup.get_children().forEach((actor) => {
                 this.activities_brightness = settings.get_double("activitiesbrightness");
                 actor.vignette = true;
                 actor.brightness = 1.0;
                 actor["vignette_sharpness"] = 0;
-                Tweener.addTween(actor,
-                                 { brightness: this.activities_brightness,
-                                   time: Overview.SHADE_ANIMATION_TIME,
-                                   transition: 'easeOutQuad'
-                                 });
-            }, this)
+                actor.ease_property('brightness', this.activities_brightness, {
+                    duration: Overview.SHADE_ANIMATION_TIME,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD
+                });
+            })
         };
 
         // Inject a new function handling the unshading of the activities background
         Main.overview._unshadeBackgrounds = function() {
-            Main.overview._backgroundGroup.get_children().forEach(function(actor) {
+            Main.overview._backgroundGroup.get_children().forEach((actor) => {
                 this.activities_brightness = settings.get_double("activitiesbrightness");
                 actor.vignette = true;
                 actor.brightness = this.activities_brightness;
                 actor["vignette_sharpness"] = 0;
-                Tweener.addTween(actor,
-                                 { brightness: 1.0,
-                                   time: Overview.SHADE_ANIMATION_TIME,
-                                   transition: 'easeOutQuad'
-                                 });
-            }, this)
+                actor.ease_property('brightness', 1.0, {
+                    duration: Overview.SHADE_ANIMATION_TIME,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD
+                });
+            })
         };
     }
 
@@ -448,6 +482,7 @@ class Blyr {
 
         // Background group to contain the blurred overview backgrounds
         this.modifiedOverviewBackgroundGroup = new Meta.BackgroundGroup({ 
+            name: "blyr",
             reactive: true, 
             "z-position": -1 
         });
@@ -455,7 +490,6 @@ class Blyr {
         // Add this background group to the layoutManager's overview Group
         Main.layoutManager.overviewGroup.add_child(
             this.modifiedOverviewBackgroundGroup);
-
         // Get current activities background brighness value
         this.activities_brightness = settings.get_double("activitiesbrightness");
 
@@ -466,29 +500,33 @@ class Blyr {
         // which are beeing phased out later causes issues as they appear as plane
         // white backgrounds instead of the actual image.
         Main.overview._backgroundGroup.get_children().forEach(
-            function(bg) {
-                if(bg.opacity == 255){
+            (bg) => {
+                if(bg.opacity == 255) {
+                    //bg.name = this.bgcounter.toString();
                     bg.vignette = false;
                     bg.brightness = 1.0;
 
                     // Clone the background actor
                     this.bgActor = new Meta.BackgroundActor({
-                        name: "blurred",
+                        //name: bg.name,
                         background: bg.background,
-                        width: bg["width"]+2,
-                        height: bg["height"]+2,
+                        width: bg["width"], //+2,
+                        height: bg["height"], //+2,
                         monitor: bg["monitor"],
-                        x: bg["x"]-1,
-                        y: bg["y"]-1
+                        x: bg["x"], //-1,
+                        y: bg["y"] //-1
                     });
 
+
                     // Apply blur effect
-                    this._applyTwoPassBlur(this.bgActor, this.activities_brightness);
+                    //this._applyTwoPassBlur(this.bgActor, this.activities_brightness);
+
+                    this._apply_blur(this.bgActor, 5, 5);
 
                     // Add child to our modified BG actor
                     this.modifiedOverviewBackgroundGroup.add_child(this.bgActor);
                 }
-            }.bind(this)
+            }
         );
     }
 
@@ -497,20 +535,20 @@ class Blyr {
         this.activities_brightness = settings.get_double("activitiesbrightness");
         // Remove and reapply blur effect for each actor
         this.modifiedOverviewBackgroundGroup.get_children().forEach(
-            function(actor) {
+            (actor) => {
                 actor.clear_effects();
                 this._applyTwoPassBlur(actor, this.activities_brightness);
-            }.bind(this)
+            }
         );
     }
 
     _removeOverviewBackgrounds() {
-        // Remove all children from modified background actor
-        if(this.modifiedOverviewBackgroundGroup != null) {
-            this.modifiedOverviewBackgroundGroup.remove_all_children();
-            this.modifiedOverviewBackgroundGroup.destroy();
-            this.modifiedOverviewBackgroundGroup = null;
-        }
+        Main.layoutManager.overviewGroup.get_children().forEach((child) => {
+            if(child.name == "blyr") {
+                child.destroy();
+            }
+        });
+        this.modifiedOverviewBackgroundGroup = null;
     }
 
     /***************************************************************
@@ -526,11 +564,11 @@ class Blyr {
         // Create list of backgrounds with full opacity
         let bgs = [];
         Main.overview._backgroundGroup.get_children().forEach(
-            function(bg) {
+            (bg) => {
                 if(bg.opacity == 255 && bg.visible) {
                     bgs.push(bg);
                 }
-            }.bind(this));
+            });
 
         // Calculate index of primary background
         let bgIndex = bgs.length - global.display.get_primary_monitor() - 1;
@@ -542,6 +580,7 @@ class Blyr {
         this.panelContainer = new Clutter.Actor({
             width: this.pMonitor.width,
             height: 0,
+            name: "blyr",
             /* Needed to ensure proper positioning behind the panel */
             "z-position": -1
         });
@@ -549,8 +588,7 @@ class Blyr {
         // Clone primary background instance (we need to clone it, not just 
         // assign it, so we can modify it without influencing the main 
         // desktop background)
-        this.panel_bg = new Meta.BackgroundActor ({
-            name: "panel_bg",
+        this.panel_bg = new Meta.BackgroundActor({
             background: this.primaryBackground["background"],
             monitor: this.primaryBackground["monitor"],
             width: this.pMonitor.width+2,
@@ -585,16 +623,15 @@ class Blyr {
 
     _removePanelBlur() {
         // Remove blurred panel background
-        if(this.panelContainer != undefined) {
-            Main.layoutManager.panelBox.remove_child(this.panelContainer);
-            this.panelContainer.remove_all_children();
-            this.panelContainer.destroy();
-            this.panelContainer = undefined;
-            if(this.panel_bg != undefined) {
-                this.panel_bg.destroy();
-                this.panel_bg = undefined;
-            }
-        }
+        Main.layoutManager.panelBox.get_children().forEach(
+            (child) => {
+                if(child.name == "blyr") {
+                    Main.layoutManager.panelBox.remove_child(child);
+                    child.destroy();
+                }
+            });
+        this.panelContainer = undefined;
+        this.panel_bg = undefined;
     }
 
     /***************************************************************

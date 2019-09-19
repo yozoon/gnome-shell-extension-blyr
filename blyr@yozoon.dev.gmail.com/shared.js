@@ -17,6 +17,7 @@ function getSettings(schemaName, schemaDir) {
                                   Gio.SettingsSchemaSource.get_default(),
                                   false);
     	var schema = schemaSource.lookup(schemaName, false);
+        log(schema);
 
         return new Gio.Settings({ settings_schema: schema });
     }
