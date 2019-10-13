@@ -7,6 +7,7 @@
 const Meta = imports.gi.Meta;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
+const Tweener = imports.ui.tweener;
 const Clutter = imports.gi.Clutter;
 const Main = imports.ui.main;
 const Overview = imports.ui.overview;
@@ -354,18 +355,36 @@ class Blyr {
 
     _fadeIn(actor) {
         // Transition animation: change opacity to 255 (fully opaque)
-        actor.ease_property('opacity', 255, {
-            duration: Overview.SHADE_ANIMATION_TIME,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD
-        });
+        if(actor.ease_property == undefined) {
+            Tweener.addTween(actor, 
+                {
+                    opacity: 255,
+                    time: Overview.SHADE_ANIMATION_TIME,
+                    transition: 'easeOutQuad'
+                });
+        } else {
+            actor.ease_property('opacity', 255, {
+                duration: Overview.SHADE_ANIMATION_TIME,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD
+            });
+        }
     }
 
     _fadeOut(actor) {
         // Transition animation: change opacity to 0 (fully transparent)
-        actor.ease_property('opacity', 0, {
-            duration: Overview.SHADE_ANIMATION_TIME,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD
-        });
+        if(actor.ease_property == undefined) {
+            Tweener.addTween(actor, 
+                {
+                    opacity: 0,
+                    time: Overview.SHADE_ANIMATION_TIME,
+                    transition: 'easeOutQuad'
+                });
+        } else {
+            actor.ease_property('opacity', 0, {
+                duration: Overview.SHADE_ANIMATION_TIME,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD
+            });
+        }
     }
 
     /***************************************************************
@@ -391,10 +410,18 @@ class Blyr {
                 actor.vignette = true;
                 actor.brightness = 1.0;
                 actor["vignette_sharpness"] = 0;
-                actor.ease_property('brightness', this.activities_brightness, {
-                    duration: Overview.SHADE_ANIMATION_TIME,
-                    mode: Clutter.AnimationMode.EASE_OUT_QUAD
-                });
+                if(actor.ease_property == undefined) {
+                    Tweener.addTween(actor,
+                        { brightness: this.activities_brightness,
+                          time: Overview.SHADE_ANIMATION_TIME,
+                          transition: 'easeOutQuad'
+                        });
+                } else {
+                    actor.ease_property('brightness', this.activities_brightness, {
+                        duration: Overview.SHADE_ANIMATION_TIME,
+                        mode: Clutter.AnimationMode.EASE_OUT_QUAD
+                    });
+                }
             }, this)
         };
 
@@ -405,10 +432,18 @@ class Blyr {
                 actor.vignette = true;
                 actor.brightness = this.activities_brightness;
                 actor["vignette_sharpness"] = 0;
-                actor.ease_property('brightness', 1.0, {
-                    duration: Overview.SHADE_ANIMATION_TIME,
-                    mode: Clutter.AnimationMode.EASE_OUT_QUAD
-                });
+                if(actor.ease_property == undefined) {
+                    Tweener.addTween(actor,
+                        { brightness: 1.0,
+                          time: Overview.SHADE_ANIMATION_TIME,
+                          transition: 'easeOutQuad'
+                        });
+                } else {
+                    actor.ease_property('brightness', 1.0, {
+                        duration: Overview.SHADE_ANIMATION_TIME,
+                        mode: Clutter.AnimationMode.EASE_OUT_QUAD
+                    });
+                }
             }, this)
         };
     }

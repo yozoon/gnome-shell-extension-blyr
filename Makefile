@@ -18,7 +18,7 @@ all:
 zip-file: all
 	@ # Create zip of the source directory
 	@ ( cd "$(SOURCEDIR)"; \
-	zip -r "../$(BUILDDIR)/$(UUID).zip" . );
+	zip -r "../$(BUILDDIR)/$(UUID).zip" . -x *.vscode* -x *outline.txt*);
 
 local-install: all local-uninstall
 	@ cp -rf "$(SOURCEDIR)" "$(LOCALPREFIX)/$(UUID)"
