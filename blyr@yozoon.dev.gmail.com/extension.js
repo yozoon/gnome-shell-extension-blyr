@@ -9,7 +9,6 @@ const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const Clutter = imports.gi.Clutter;
 const Main = imports.ui.main;
-const Tweener = imports.ui.tweener;
 const Overview = imports.ui.overview;
 const ExtensionUtils = imports.misc.extensionUtils;
 const LoginManager = imports.misc.loginManager;
@@ -306,7 +305,7 @@ class Blyr {
 
     _regenerateBlurredActors() {
         log('regenerate actors');
-        // Delayed function call to give Tweener some time to fade out the old backgrounds
+        // Delayed function call to let the old backgrounds fade out
         GLib.timeout_add(GLib.PRIORITY_LOW, 100, 
             function() {
                 switch(this.mode) {
@@ -355,21 +354,17 @@ class Blyr {
 
     _fadeIn(actor) {
         // Transition animation: change opacity to 255 (fully opaque)
-        Tweener.addTween(actor, 
-        {
-            opacity: 255,
-            time: Overview.SHADE_ANIMATION_TIME,
-            transition: 'easeOutQuad'
+        actor.ease_property('opacity', 255, {
+            duration: Overview.SHADE_ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD
         });
     }
 
     _fadeOut(actor) {
         // Transition animation: change opacity to 0 (fully transparent)
-        Tweener.addTween(actor, 
-        {
-            opacity: 0,
-            time: Overview.SHADE_ANIMATION_TIME,
-            transition: 'easeOutQuad'
+        actor.ease_property('opacity', 0, {
+            duration: Overview.SHADE_ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD
         });
     }
 
@@ -396,11 +391,10 @@ class Blyr {
                 actor.vignette = true;
                 actor.brightness = 1.0;
                 actor["vignette_sharpness"] = 0;
-                Tweener.addTween(actor,
-                                 { brightness: this.activities_brightness,
-                                   time: Overview.SHADE_ANIMATION_TIME,
-                                   transition: 'easeOutQuad'
-                                 });
+                actor.ease_property('brightness', this.activities_brightness, {
+                    duration: Overview.SHADE_ANIMATION_TIME,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD
+                });
             }, this)
         };
 
@@ -411,11 +405,10 @@ class Blyr {
                 actor.vignette = true;
                 actor.brightness = this.activities_brightness;
                 actor["vignette_sharpness"] = 0;
-                Tweener.addTween(actor,
-                                 { brightness: 1.0,
-                                   time: Overview.SHADE_ANIMATION_TIME,
-                                   transition: 'easeOutQuad'
-                                 });
+                actor.ease_property('brightness', 1.0, {
+                    duration: Overview.SHADE_ANIMATION_TIME,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD
+                });
             }, this)
         };
     }
@@ -533,7 +526,12 @@ class Blyr {
             }.bind(this));
 
         // Calculate index of primary background
-        let bgIndex = bgs.length - global.display.get_primary_monitor() - 1;
+        // Check wheter the global display object has a get_primary_display method
+        if(global.display.get_primary_monitor == undefined) {
+            var bgIndex = bgs.length - global.screen.get_primary_monitor() - 1;
+        } else {
+            var bgIndex = bgs.length - global.display.get_primary_monitor() - 1;
+        }
 
         // Select primary background
         this.primaryBackground = bgs[bgIndex];

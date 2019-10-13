@@ -27,7 +27,15 @@ function readShaderFile(filename) {
     let stream = input_file.read(null);
     let data = stream.read_bytes(size, null).get_data();
     stream.close(null);
-    return ByteArray.toString(data);
+    var content = ByteArray.toString(data);
+    // Compatability check: if the first character is a "[" we assume that
+    // the byte array conversion did not work the way we expected so we 
+    // fall back to the previous array.toString() method
+    if(content[0] == "[") {
+    	return data.toString();
+    } else {
+      return content;
+    }
 }
 
 var BlurEffect = GObject.registerClass(
