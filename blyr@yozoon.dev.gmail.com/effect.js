@@ -13,7 +13,7 @@ const ByteArray = imports.byteArray;
 const Extension = ExtensionUtils.getCurrentExtension();
 const Shared = Extension.imports.shared;
 
-const settings = Shared.getSettings(Shared.SCHEMA_NAME, 
+const settings = Shared.getSettings(Shared.SCHEMA_NAME,
     Extension.dir.get_child('schemas').get_path());
 
 // Source: https://stackoverflow.com/a/21146281
@@ -31,10 +31,10 @@ function readShaderFile(filename) {
     // Compatability check: if the first character is a "[" we assume that
     // the byte array conversion did not work the way we expected so we 
     // fall back to the previous array.toString() method
-    if(content[0] == "[") {
-    	return data.toString();
+    if (content[0] == "[") {
+        return data.toString();
     } else {
-      return content;
+        return content;
     }
 }
 
@@ -42,10 +42,10 @@ var BlurEffect = GObject.registerClass(
     class BlurEffect extends Clutter.ShaderEffect {
         _init(width, height, direction, intensity, brightness) {
             // Initialize the parent instance
-            super._init({shader_type: Clutter.ShaderType.FRAGMENT_SHADER});
+            super._init({ shader_type: Clutter.ShaderType.FRAGMENT_SHADER });
 
             // Read shader and set it as source
-            this.SHADER = readShaderFile(Extension.dir.get_path() 
+            this.SHADER = readShaderFile(Extension.dir.get_path()
                 + "/shader.glsl");
             this.set_shader_source(this.SHADER);
 
