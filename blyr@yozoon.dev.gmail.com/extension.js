@@ -9,6 +9,7 @@ const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const Tweener = imports.ui.tweener;
 const Clutter = imports.gi.Clutter;
+const Shell = imports.gi.Shell;
 const Main = imports.ui.main;
 const Overview = imports.ui.overview;
 const ExtensionUtils = imports.misc.extensionUtils;
@@ -21,6 +22,7 @@ const settings = Shared.getSettings(Shared.SCHEMA_NAME,
     Extension.dir.get_child('schemas').get_path());
 
 const eligibleForPanelBlur = Shared.isEligibleForPanelBlur();
+const supportsNativeBlur = Shared.supportsNativeBlur();
 
 // Make a "backup" copy of the gnome-shell functions we are going to overwrite
 const _shadeBackgrounds = Main.overview._shadeBackgrounds;
@@ -28,6 +30,7 @@ const _unshadeBackgrounds = Main.overview._unshadeBackgrounds;
 
 const OVERVIEW_CONTAINER_NAME = "blyr_overview_container";
 const PANEL_CONTAINER_NAME = "blyr_panel_container";
+const SHELL_BLUR_MODE_ACTOR = 0;
 
 function log(msg) {
     if (settings.get_boolean('debug-logging')) {
@@ -352,12 +355,22 @@ class Blyr {
         // Update effect settings
         this.intensity = settings.get_double("intensity");
 
-        if (!actor.get_effect("vertical_blur"))
-            actor.add_effect_with_name("vertical_blur", new Effect.BlurEffect(
-                actor.width, actor.height, 0, this.intensity, brightness));
-        if (!actor.get_effect("horizontal_blur"))
-            actor.add_effect_with_name("horizontal_blur", new Effect.BlurEffect(
-                actor.width, actor.height, 1, this.intensity, brightness));
+        if(supportsNativeBlur) {
+            if (!actor.get_effect("blur")) {
+                actor.add_effect_with_name("blur", new Shell.BlurEffect({
+                    mode: SHELL_BLUR_MODE_ACTOR,
+                    brightness: parseFloat(brightness),
+                    sigma: parseFloat(this.intensity),
+                }));
+            }
+        } else {
+            if (!actor.get_effect("vertical_blur"))
+                actor.add_effect_with_name("vertical_blur", new Effect.BlurEffect(
+                    actor.width, actor.height, 0, this.intensity, brightness));
+            if (!actor.get_effect("horizontal_blur"))
+                actor.add_effect_with_name("horizontal_blur", new Effect.BlurEffect(
+                    actor.width, actor.height, 1, this.intensity, brightness));
+        }
     }
 
     _fadeIn(actor) {
@@ -601,7 +614,7 @@ class Blyr {
         this.panel_brightness = settings.get_double("panelbrightness");
 
         // Apply the blur effect to the panel background
-        this._applyTwoPassBlur(this.panel_bg, this.panel_brightness);
+        //this._applyTwoPassBlur(this.panel_bg, this.panel_brightness);
 
         // Add the background texture to the background container
         this.panelContainer.add_actor(this.panel_bg);

@@ -23,6 +23,7 @@ const Gettext = imports.gettext.domain('blyr');
 const _ = Gettext.gettext;
 
 const eligibleForPanelBlur = Shared.isEligibleForPanelBlur();
+const supportsNativeBlur = Shared.supportsNativeBlur();
 
 const UPDATE_TIMEOUT = 500;
 
@@ -277,7 +278,7 @@ function init(){
 }
 
 function buildPrefsWidget() {
-    var clutterinit = false;
+    var showPreview = false;
 
     // Try to initialise GtkClutter and Clutter which are required to show the blur preview. 
     // If this fails we will not generate the preview actor to keep all the main functionality 
@@ -286,12 +287,13 @@ function buildPrefsWidget() {
         // Init GtkClutter and Clutter
         GtkClutter.init(null);
         Clutter.init(null);
-        clutterinit = true;
+        showPreview = true;
     } catch(err) {
         log("Clutter or GtkClutter init failed with the following " + err);
     }
 
-    let PrefsWidget = new BlyrPrefsWidget(clutterinit);
+    showPreview &= !supportsNativeBlur;
+    let PrefsWidget = new BlyrPrefsWidget(showPreview);
     PrefsWidget.show_all();
 
     return PrefsWidget;

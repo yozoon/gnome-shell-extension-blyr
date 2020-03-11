@@ -39,3 +39,14 @@ function isEligibleForPanelBlur() {
     }
     return eligible;
 }
+
+function supportsNativeBlur() {
+    let shell_version = checkShellVersion();
+	let native;
+	if(shell_version >= 336) {
+        native = true;
+    } else {
+        native = false;
+    }
+    return native;
+}
