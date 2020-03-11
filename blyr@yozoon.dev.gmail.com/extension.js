@@ -1,16 +1,17 @@
 /**
  * Blyr main extension class
- * Copyright © 2017-2019 Julius Piso, All rights reserved
+ * Copyright © 2017-2020 Julius Piso, All rights reserved
  * This file is distributed under the same license as Blyr.
  **/
 
-const Meta = imports.gi.Meta;
 const Gio = imports.gi.Gio;
+const Meta = imports.gi.Meta;
 const GLib = imports.gi.GLib;
-const Tweener = imports.ui.tweener;
-const Clutter = imports.gi.Clutter;
 const Shell = imports.gi.Shell;
+const Clutter = imports.gi.Clutter;
+
 const Main = imports.ui.main;
+const Tweener = imports.ui.tweener;
 const Overview = imports.ui.overview;
 const ExtensionUtils = imports.misc.extensionUtils;
 const LoginManager = imports.misc.loginManager;
@@ -512,7 +513,7 @@ class Blyr {
 
         // Only create copies of background actors with full opacity
         // This is needed to prevent copying of actors which are currently beeing
-        // removed by the background manager. We are reveiving the change signal
+        // removed by the background manager. We are receiving the change signal
         // before the fadeout animation is completed. Adding one of the actors
         // which are beeing phased out later causes issues as they appear as plane
         // white backgrounds instead of the actual image.

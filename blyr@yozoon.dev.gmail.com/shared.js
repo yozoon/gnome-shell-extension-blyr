@@ -1,6 +1,6 @@
 /**
  * Blyr shared/utility functions
- * Copyright © 2017-2019 Julius Piso, All rights reserved
+ * Copyright © 2017-2020 Julius Piso, All rights reserved
  * This file is distributed under the same license as Blyr.
  **/
  
