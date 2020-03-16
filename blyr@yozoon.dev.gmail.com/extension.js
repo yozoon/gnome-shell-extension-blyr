@@ -30,12 +30,13 @@ const _shadeBackgrounds = Main.overview._shadeBackgrounds;
 const _unshadeBackgrounds = Main.overview._unshadeBackgrounds;
 
 const OVERVIEW_CONTAINER_NAME = "blyr_overview_container";
+const OVERVIEW_BACKGROUND_NAME = "blyr_overview_background";
 const PANEL_CONTAINER_NAME = "blyr_panel_container";
 const SHELL_BLUR_MODE_ACTOR = 0;
 
 function log(msg) {
     if (settings.get_boolean('debug-logging')) {
-        print("blyr.yozoon.dev.gmail.com: " + msg);
+        print("[Blyr] " + msg);
     }
 }
 
@@ -50,7 +51,6 @@ class Blyr {
         this.gsettings = new Gio.Settings({ schema_id: 'org.gnome.desktop.background' });
 
         // Create variables
-        this.modifiedOverviewBackgroundGroup = null;
         this.pMonitor = Main.layoutManager.primaryMonitor;
         this.pIndex = Main.layoutManager.primaryIndex;
         this.bgManager = Main.layoutManager._bgManagers[this.pIndex];
@@ -68,11 +68,6 @@ class Blyr {
         // Default to activities_only
         if (!eligibleForPanelBlur)
             this.mode = 2;
-
-        // Get current settings
-        this.intensity = settings.get_double("intensity");
-        this.activities_brightness = settings.get_double("activitiesbrightness");
-        this.panel_brightness = settings.get_double("panelbrightness");
 
         // Modify shell using current parameters and settings.
         this._startup();
@@ -139,7 +134,7 @@ class Blyr {
                 this.activities_brightness = settings.get_double("activitiesbrightness");
                 this.panel_brightness = settings.get_double("panelbrightness");
 
-                // If either blur intensity, activities brightness or panel 
+                // If either blur intensity, activities brightness or panel
                 // brightness changed
                 if (intensity_old != this.intensity ||
                     activities_brightness_old != this.activities_brightness ||
@@ -176,6 +171,8 @@ class Blyr {
         // prevent unresponsive "orphan" listeners
         this.session_mode_connection = Main.sessionMode.connect('updated',
             this._connectListeners.bind(this));
+
+        log("Session Mode: " + Main.sessionMode.currentMode);
 
         // Monitors changed listener
         this.monitor_connection = Main.layoutManager.connect('monitors-changed',
@@ -223,7 +220,7 @@ class Blyr {
                 // our copied actors.
                 Main.overview._backgroundGroup.get_children().forEach(
                     function (actor) {
-                        if (actor.is_realized())
+                        if (actor.is_realized() && actor["name"] != OVERVIEW_BACKGROUND_NAME)
                             this._fadeOut(actor);
                     }.bind(this));
             }.bind(this)
@@ -235,7 +232,7 @@ class Blyr {
                 // our copied actors.
                 Main.overview._backgroundGroup.get_children().forEach(
                     function (actor) {
-                        if (actor.is_realized())
+                        if (actor.is_realized() && actor["name"] != OVERVIEW_BACKGROUND_NAME)
                             this._fadeIn(actor);
                     }.bind(this));
             }.bind(this)
@@ -352,25 +349,22 @@ class Blyr {
     /***************************************************************
      *            Blur Effect and Animation Utilities              *
      ***************************************************************/
-    _applyTwoPassBlur(actor, brightness) {
-        // Update effect settings
-        this.intensity = settings.get_double("intensity");
-
+    _applyTwoPassBlur(actor, intensity, brightness=1.0) {
         if(supportsNativeBlur) {
             if (!actor.get_effect("blur")) {
                 actor.add_effect_with_name("blur", new Shell.BlurEffect({
                     mode: SHELL_BLUR_MODE_ACTOR,
                     brightness: parseFloat(brightness),
-                    sigma: parseFloat(this.intensity),
+                    sigma: parseFloat(intensity),
                 }));
             }
         } else {
             if (!actor.get_effect("vertical_blur"))
                 actor.add_effect_with_name("vertical_blur", new Effect.BlurEffect(
-                    actor.width, actor.height, 0, this.intensity, brightness));
+                    actor.width, actor.height, 0, intensity, brightness));
             if (!actor.get_effect("horizontal_blur"))
                 actor.add_effect_with_name("horizontal_blur", new Effect.BlurEffect(
-                    actor.width, actor.height, 1, this.intensity, brightness));
+                    actor.width, actor.height, 1, intensity, brightness));
         }
     }
 
@@ -492,24 +486,9 @@ class Blyr {
         // Update backgrounds to prevent ghost actors
         Main.overview._updateBackgrounds();
 
-        if (this.modifiedOverviewBackgroundGroup != undefined) {
-            Main.layoutManager.overviewGroup.remove_child(
-                this.modifiedOverviewBackgroundGroup);
-        }
-
-        // Background group to contain the blurred overview backgrounds
-        this.modifiedOverviewBackgroundGroup = new Meta.BackgroundGroup({
-            name: OVERVIEW_CONTAINER_NAME,
-            reactive: true,
-            "z-position": -1
-        });
-
-        // Add this background group to the layoutManager's overview Group
-        Main.layoutManager.overviewGroup.add_child(
-            this.modifiedOverviewBackgroundGroup);
-
-        // Get current activities background brighness value
-        this.activities_brightness = settings.get_double("activitiesbrightness");
+        // Get current activities background brighness and blur intensity value
+        let activities_brightness = settings.get_double("activitiesbrightness");
+        let intensity = settings.get_double("intensity");
 
         // Only create copies of background actors with full opacity
         // This is needed to prevent copying of actors which are currently beeing
@@ -524,34 +503,40 @@ class Blyr {
                     bg.brightness = 1.0;
 
                     // Clone the background actor
-                    this.bgActor = new Meta.BackgroundActor({
+                    let blurred_bg = new Meta.BackgroundActor({
+                        name: OVERVIEW_BACKGROUND_NAME,
                         background: bg.background,
-                        width: bg["width"] + 2,
-                        height: bg["height"] + 2,
+                        width: bg["width"],
+                        height: bg["height"],
                         monitor: bg["monitor"],
-                        x: bg["x"] - 1,
-                        y: bg["y"] - 1
+                        x: bg["x"],
+                        y: bg["y"],
+                        reactive: true
                     });
 
                     // Apply blur effect
-                    this._applyTwoPassBlur(this.bgActor, this.activities_brightness);
-
+                    this._applyTwoPassBlur(blurred_bg, intensity, activities_brightness);
+                    
                     // Add child to our modified BG actor
-                    this.modifiedOverviewBackgroundGroup.add_child(this.bgActor);
+                    Main.overview._backgroundGroup.add_child(blurred_bg);
+                    Main.overview._backgroundGroup.set_child_below_sibling(blurred_bg, bg);
                 }
             }.bind(this)
         );
     }
 
     _updateOverviewBackgrounds() {
-        // Get current activities background brighness value
-        this.activities_brightness = settings.get_double("activitiesbrightness");
+        // Get current activities background brighness and blur intensity value
+        let activities_brightness = settings.get_double("activitiesbrightness");
+        let intensity = settings.get_double("intensity");
         // Remove and reapply blur effect for each actor
-        this.modifiedOverviewBackgroundGroup.get_children().forEach(
-            function (actor) {
-                actor.clear_effects();
-                this._applyTwoPassBlur(actor, this.activities_brightness);
-            }.bind(this)
+        Main.overview._backgroundGroup.get_children().forEach(
+                function (bg) {
+                    if (bg["name"] == OVERVIEW_BACKGROUND_NAME) {
+                        bg.clear_effects();
+                        this._applyTwoPassBlur(bg, intensity, activities_brightness);
+                    }
+                }.bind(this)
         );
     }
 
@@ -590,8 +575,7 @@ class Blyr {
             name: PANEL_CONTAINER_NAME,
             width: this.pMonitor.width,
             height: 0,
-            /* Needed to ensure proper positioning behind the panel */
-            "z-position": -1
+            reactive: true
         });
 
         // Clone primary background instance (we need to clone it, not just 
@@ -600,58 +584,66 @@ class Blyr {
         this.panel_bg = new Meta.BackgroundActor({
             background: this.primaryBackground["background"],
             monitor: this.primaryBackground["monitor"],
-            width: this.pMonitor.width + 2,
+            width: Main.layoutManager.panelBox.width,
             /* Needed to reduce edge darkening caused by high blur intensities */
-            height: Main.layoutManager.panelBox.height * 2,
-            x: -1,
-            y: -1
+            height: Main.layoutManager.panelBox.height*2,
+            x: 0,
+            y: 0
         });
 
         // Only show one part of the panel background actor as large as the 
         // panel itself
-        this.panel_bg.set_clip(0, 0, this.pMonitor.width + 2, Main.layoutManager.panelBox.height);
+        this.panel_bg.set_clip(0, 0, Main.layoutManager.panelBox.width,
+            Main.layoutManager.panelBox.height);
 
-        // Get current panel brightness value
-        this.panel_brightness = settings.get_double("panelbrightness");
+        // Get current panel brightness and blur intensity value
+        let panel_brightness = settings.get_double("panelbrightness");
+        let intensity = settings.get_double("intensity");
 
         // Apply the blur effect to the panel background
-        //this._applyTwoPassBlur(this.panel_bg, this.panel_brightness);
+        this._applyTwoPassBlur(this.panel_bg, intensity, panel_brightness);
 
         // Add the background texture to the background container
         this.panelContainer.add_actor(this.panel_bg);
 
         // Add the background container to the system panel box
         Main.layoutManager.panelBox.add_actor(this.panelContainer);
+        Main.layoutManager.panelBox.set_child_at_index(this.panelContainer, 0);
     }
 
     _updatePanelBlur() {
         this.panel_bg.clear_effects();
-        this.panel_brightness = settings.get_double("panelbrightness");
-        this._applyTwoPassBlur(this.panel_bg, this.panel_brightness);
+        let panel_brightness = settings.get_double("panelbrightness");
+        let intensity = settings.get_double("intensity");
+        this._applyTwoPassBlur(this.panel_bg, intensity, panel_brightness);
     }
 
     /***************************************************************
      *                   Restore Shell State                       *
      ***************************************************************/
-
+    // TODO: Remove code duplication of _removePanelBlur and _removeOverviewBackgrounds
     _removePanelBlur() {
-        Main.layoutManager.panelBox.get_children().forEach((child) => {
-            if (child.name == PANEL_CONTAINER_NAME) {
-                Main.layoutManager.panelBox.remove_child(child);
-                child.destroy();
-                this.panelContainer = null;
-            }
-        });
+        Main.layoutManager.panelBox.get_children().forEach(
+            function (child) {
+                if (child.name == PANEL_CONTAINER_NAME) {
+                    Main.layoutManager.panelBox.remove_child(child);
+                    child.destroy();
+                    this.panelContainer = null;
+                }
+            }.bind(this)
+        );
     }
 
     _removeOverviewBackgrounds() {
-        Main.layoutManager.overviewGroup.get_children().forEach((child) => {
-            if (child.name == OVERVIEW_CONTAINER_NAME) {
-                Main.layoutManager.overviewGroup.remove_child(child);
-                child.destroy();
-                this.modifiedOverviewBackgroundGroup = null;
-            }
-        });
+        log("removing backgrounds");
+        Main.overview._backgroundGroup.get_children().forEach(
+            function (child) {
+                if (child.name == OVERVIEW_BACKGROUND_NAME) {
+                    Main.layoutManager.overviewGroup.remove_child(child);
+                    child.destroy();
+                }
+            }.bind(this)
+        );
     }
 
     disable() {
