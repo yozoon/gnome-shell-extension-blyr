@@ -19,8 +19,10 @@ const LoginManager = imports.misc.loginManager;
 const Extension = ExtensionUtils.getCurrentExtension();
 const Effect = Extension.imports.effect;
 const Shared = Extension.imports.shared;
-const settings = Shared.getSettings(Shared.SCHEMA_NAME,
+const Settings = Shared.getSettings(Shared.SCHEMA_NAME,
     Extension.dir.get_child('schemas').get_path());
+
+const GSettings = new Gio.Settings({ schema_id: 'org.gnome.desktop.background' });
 
 const eligibleForPanelBlur = Shared.isEligibleForPanelBlur();
 const supportsNativeBlur = Shared.supportsNativeBlur();
@@ -35,8 +37,8 @@ const PANEL_CONTAINER_NAME = "blyr_panel_container";
 const SHELL_BLUR_MODE_ACTOR = 0;
 
 function log(msg) {
-    if (settings.get_boolean('debug-logging')) {
-        print("[Blyr] " + msg);
+    if (Settings.get_boolean('debug-logging')) {
+        print('[Blyr] ' + msg);
     }
 }
 
@@ -45,24 +47,12 @@ class Blyr {
         log("Starting Blyr extension...");
 
         // Get current mode
-        this.mode = settings.get_int("mode");
-
-        // Wallpaper settings
-        this.gsettings = new Gio.Settings({ schema_id: 'org.gnome.desktop.background' });
+        this.mode = Settings.get_int('mode');
 
         // Create variables
         this.pMonitor = Main.layoutManager.primaryMonitor;
         this.pIndex = Main.layoutManager.primaryIndex;
         this.bgManager = Main.layoutManager._bgManagers[this.pIndex];
-
-        this.settings_connection = null;
-        this.gsettings_connection = null;
-        this.bg_connection = null;
-        this.session_mode_connection = null;
-        this.monitor_changed_connection = null;
-        this.overview_showing_connection = null;
-        this.overview_hiding_connection = null;
-
 
         // Override mode if we can't blur the panel background
         // Default to activities_only
@@ -73,7 +63,26 @@ class Blyr {
         this._startup();
 
         // Connect the listeners
-        this._connectListeners();
+        // Settings changed listeners
+        Shared.connectSmart(Settings, 'changed::mode', this, '_onModeChange');
+        Shared.connectSmart(Settings, 'changed::intensity', this, '_onIntensityChange');
+        Shared.connectSmart(Settings, 'changed::panelbrightness', this, '_onPanelBrightnessChange');
+        Shared.connectSmart(Settings, 'changed::activitiesbrightness', this, '_onActivitiesBrightnessChange');
+
+        // listens to changes of the wallpaper url in gsettings
+        Shared.connectSmart(GSettings, 'changed::picture-uri', this, '_regenerateBlurredActors');
+
+        // listens to changed signal on bg manager (useful if the url of a 
+        // wallpaper doesn't change, but the wallpaper itself changed)
+        Shared.connectSmart(Main.layoutManager._bgManagers[this.pIndex], 'changed', this, 
+                            '_regenerateBlurredActors');
+
+        // session mode listener used to recreate listeners in order to 
+        // prevent unresponsive "orphan" listeners
+        //Shared.connectSmart(Main.sessionMode, 'updated', this, '_connectListeners');
+
+        // Monitors changed listener
+        Shared.connectSmart(Main.layoutManager, 'monitors-changed', this, '_onMonitorChange');
     }
 
     _startup() {
@@ -106,155 +115,35 @@ class Blyr {
     }
 
     /***************************************************************
-     *                       Listeners                             *
+     *                       Callbacks                             *
      ***************************************************************/
-    _connectListeners() {
-        this._disconnectListeners();
-
-        log("_connectListeners");
-
-        // Monitor information
-        this.pMonitor = Main.layoutManager.primaryMonitor;
-        this.pIndex = Main.layoutManager.primaryIndex;
-        this.bgManager = Main.layoutManager._bgManagers[this.pIndex];
-
-        // Settings changed listener
-        this.settings_connection = settings.connect("changed",
-            function () {
-                if (eligibleForPanelBlur)
-                    this._checkModeChange();
-
-                // Store outdated settings
-                let intensity_old = this.intensity;
-                let activities_brightness_old = this.activities_brightness;
-                let panel_brightness_old = this.panel_brightness;
-
-                // Get current settings
-                this.intensity = settings.get_double("intensity");
-                this.activities_brightness = settings.get_double("activitiesbrightness");
-                this.panel_brightness = settings.get_double("panelbrightness");
-
-                // If either blur intensity, activities brightness or panel
-                // brightness changed
-                if (intensity_old != this.intensity ||
-                    activities_brightness_old != this.activities_brightness ||
-                    panel_brightness_old != this.panel_brightness) {
-                    switch (this.mode) {
-                        case 1:
-                            // panel_only
-                            this._updateBlurredPanelActor();
-                            break;
-                        case 2:
-                            // activities_only
-                            this._updateBlurredOverviewActors();
-                            break;
-                        case 3:
-                            // blur_both
-                            this._updateBlurredPanelActor();
-                            this._updateBlurredOverviewActors();
-                            break;
-                    }
-                }
-            }.bind(this)
-        );
-
-        // listens to changes of the wallpaper url in gsettings
-        this.gsettings_connection = this.gsettings.connect('changed::picture-uri',
-            this._regenerateBlurredActors.bind(this));
-
-        // listens to changed signal on bg manager (useful if the url of a 
-        // wallpaper doesn't change, but the wallpaper itself changed)
-        this.bg_connection = this.bgManager.connect('changed',
-            this._regenerateBlurredActors.bind(this));
-
-        // session mode listener used to recreate listeners in order to 
-        // prevent unresponsive "orphan" listeners
-        this.session_mode_connection = Main.sessionMode.connect('updated',
-            this._connectListeners.bind(this));
-
-        log("Session Mode: " + Main.sessionMode.currentMode);
-
-        // Monitors changed listener
-        this.monitor_connection = Main.layoutManager.connect('monitors-changed',
-            function () {
-                log("monitors changed");
-                this._regenerateBlurredActors();
-                this._connectListeners();
-            }.bind(this));
+    _onIntensityChange() {
+        log('Blur intensity changed');
+        this._updateBlurredPanelActor();
+        this._updateBlurredOverviewActors();
     }
 
-    _disconnectListeners() {
-        log("_disconnectListeners");
-        // Disconnect settings change connection
-        if (this.settings_connection) {
-            settings.disconnect(this.settings_connection);
-            this.settings_connection = null;
-        }
-        // Disconnect gsettings change connection
-        if (this.gsettings_connection) {
-            this.gsettings.disconnect(this.gsettings_connection);
-            this.gsettings_connection = null;
-        }
-        // Disconnect monitor changed connection
-        if (this.monitor_connection) {
-            Main.layoutManager.disconnect(this.monitor_connection);
-            this.monitor_connection = null;
-        }
-        // Disconnect background change listener
-        if (this.bg_connection) {
-            this.bgManager.disconnect(this.bg_connection);
-            this.bg_connection = null;
-        }
-        // Disconnect session mode listener
-        if (this.session_mode_connection) {
-            Main.sessionMode.disconnect(this.session_mode_connection);
-            this.session_mode_connection = null;
-        }
+    _onActivitiesBrightnessChange() {
+        log('Activities brightness changed');
+        this._updateBlurredOverviewActors();
     }
 
-    _connectOverviewListeners() {
-        // Overview showing listener
-        this.overview_showing_connection = Main.overview.connect("showing",
-            function () {
-                // Fade out the untouched overview background actors to reveal 
-                // our copied actors.
-                Main.overview._backgroundGroup.get_children().forEach(
-                    function (actor) {
-                        if (actor.is_realized() && actor["name"] != OVERVIEW_BACKGROUND_NAME)
-                            this._fadeOut(actor);
-                    }.bind(this));
-            }.bind(this)
-        );
-        // Overview Hiding listener
-        this.overview_hiding_connection = Main.overview.connect("hiding",
-            function () {
-                // Fade in the untouched overview background actors to cover 
-                // our copied actors.
-                Main.overview._backgroundGroup.get_children().forEach(
-                    function (actor) {
-                        if (actor.is_realized() && actor["name"] != OVERVIEW_BACKGROUND_NAME)
-                            this._fadeIn(actor);
-                    }.bind(this));
-            }.bind(this)
-        );
+    _onPanelBrightnessChange() {
+        log('Panel brightness changed');
+        this._updateBlurredPanelActor();
     }
 
-    _disconnectOverviewListeners() {
-        if (this.overview_showing_connection) {
-            Main.overview.disconnect(this.overview_showing_connection);
-            this.overview_showing_connection = null;
-        }
-        if (this.overview_hiding_connection) {
-            Main.overview.disconnect(this.overview_hiding_connection);
-            this.overview_hiding_connection = null;
-        }
+    _onMonitorChange() {
+        log("monitors changed");
+        this._regenerateBlurredActors();
     }
 
-    _checkModeChange() {
+    _onModeChange() {
+        log('Mode changed');
         // Get mode before the user changed the mode
         let oldmode = this.mode * 10;
         // Get mode after the user changed the mode
-        this.mode = settings.get_int("mode");
+        this.mode = Settings.get_int("mode");
 
         switch (oldmode + this.mode) {
             case 12:
@@ -312,10 +201,51 @@ class Blyr {
         }
     }
 
+    _connectOverviewListeners() {
+        // Overview showing listener
+        this.overview_showing_connection = Main.overview.connect("showing",
+            function () {
+                // Fade out the untouched overview background actors to reveal 
+                // our copied actors.
+                Main.overview._backgroundGroup.get_children().forEach(
+                    function (actor) {
+                        if (actor.is_realized() && actor["name"] != OVERVIEW_BACKGROUND_NAME)
+                            this._fadeOut(actor);
+                    }.bind(this));
+            }.bind(this)
+        );
+        // Overview Hiding listener
+        this.overview_hiding_connection = Main.overview.connect("hiding",
+            function () {
+                // Fade in the untouched overview background actors to cover 
+                // our copied actors.
+                Main.overview._backgroundGroup.get_children().forEach(
+                    function (actor) {
+                        if (actor.is_realized() && actor["name"] != OVERVIEW_BACKGROUND_NAME)
+                            this._fadeIn(actor);
+                    }.bind(this));
+            }.bind(this)
+        );
+    }
+
+    _disconnectOverviewListeners() {
+        if (this.overview_showing_connection) {
+            Main.overview.disconnect(this.overview_showing_connection);
+            this.overview_showing_connection = null;
+        }
+        if (this.overview_hiding_connection) {
+            Main.overview.disconnect(this.overview_hiding_connection);
+            this.overview_hiding_connection = null;
+        }
+    }
+
     _regenerateBlurredActors() {
+        if (this.regeneration_timeout)
+            return;
+
         log('regenerate actors');
         // Delayed function call to let the old backgrounds fade out
-        GLib.timeout_add(GLib.PRIORITY_LOW, 100,
+        this.regeneration_timeout = GLib.timeout_add(GLib.PRIORITY_LOW, 100,
             function () {
                 switch (this.mode) {
                     case 1: // panel_only
@@ -339,6 +269,7 @@ class Blyr {
                         this._createBlurredOverviewActors();
                         break;
                 }
+                this.regeneration_timeout = null;
                 return GLib.SOURCE_REMOVE;
             }.bind(this)
         );
@@ -419,7 +350,7 @@ class Blyr {
         // Inject a new function handling the shading of the activities background
         Main.overview._shadeBackgrounds = function () {
             Main.overview._backgroundGroup.get_children().forEach(function (actor) {
-                this.activities_brightness = settings.get_double("activitiesbrightness");
+                this.activities_brightness = Settings.get_double("activitiesbrightness");
                 actor.vignette = true;
                 actor.brightness = 1.0;
                 actor["vignette_sharpness"] = 0;
@@ -442,7 +373,7 @@ class Blyr {
         // Inject a new function handling the unshading of the activities background
         Main.overview._unshadeBackgrounds = function () {
             Main.overview._backgroundGroup.get_children().forEach(function (actor) {
-                this.activities_brightness = settings.get_double("activitiesbrightness");
+                this.activities_brightness = Settings.get_double("activitiesbrightness");
                 actor.vignette = true;
                 actor.brightness = this.activities_brightness;
                 actor["vignette_sharpness"] = 0;
@@ -486,8 +417,8 @@ class Blyr {
         Main.overview._updateBackgrounds();
 
         // Get current activities background brighness and blur intensity value
-        let activities_brightness = settings.get_double("activitiesbrightness");
-        let intensity = settings.get_double("intensity");
+        let activities_brightness = Settings.get_double("activitiesbrightness");
+        let intensity = Settings.get_double("intensity");
 
         // Only create copies of background actors with full opacity
         // This is needed to prevent copying of actors which are currently beeing
@@ -526,8 +457,8 @@ class Blyr {
 
     _updateBlurredOverviewActors() {
         // Get current activities background brighness and blur intensity value
-        let activities_brightness = settings.get_double("activitiesbrightness");
-        let intensity = settings.get_double("intensity");
+        let activities_brightness = Settings.get_double("activitiesbrightness");
+        let intensity = Settings.get_double("intensity");
         // Remove and reapply blur effect for each actor
         Main.overview._backgroundGroup.get_children().forEach(
                 function (bg) {
@@ -596,8 +527,8 @@ class Blyr {
             Main.layoutManager.panelBox.height);
 
         // Get current panel brightness and blur intensity value
-        let panel_brightness = settings.get_double("panelbrightness");
-        let intensity = settings.get_double("intensity");
+        let panel_brightness = Settings.get_double("panelbrightness");
+        let intensity = Settings.get_double("intensity");
 
         // Apply the blur effect to the panel background
         this._applyTwoPassBlur(this.panel_bg, intensity, panel_brightness);
@@ -612,8 +543,8 @@ class Blyr {
 
     _updateBlurredPanelActor() {
         this.panel_bg.clear_effects();
-        let panel_brightness = settings.get_double("panelbrightness");
-        let intensity = settings.get_double("intensity");
+        let panel_brightness = Settings.get_double("panelbrightness");
+        let intensity = Settings.get_double("intensity");
         this._applyTwoPassBlur(this.panel_bg, intensity, panel_brightness);
     }
 
@@ -635,7 +566,6 @@ class Blyr {
 
     disable() {
         // Disconnect Listeners
-        this._disconnectListeners();
         this._disconnectOverviewListeners();
 
         // Remove modified backgrounds
