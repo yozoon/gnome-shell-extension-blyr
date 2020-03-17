@@ -22,7 +22,6 @@ const Convenience = Extension.imports.convenience;
 const Gettext = imports.gettext.domain('blyr');
 const _ = Gettext.gettext;
 
-const eligibleForPanelBlur = Shared.isEligibleForPanelBlur();
 const supportsNativeBlur = Shared.supportsNativeBlur();
 
 const UPDATE_TIMEOUT = 500;
@@ -86,34 +85,32 @@ const BlyrPrefsWidget = new Lang.Class ({
         /*
         ** MODE SELECTOR
         */
-        if(eligibleForPanelBlur) {
-            this.selectBox = new Gtk.HBox({ spacing: 8, margin: 8, homogeneous: true });
+        this.selectBox = new Gtk.HBox({ spacing: 8, margin: 8, homogeneous: true });
 
-            // Select label
-            this.select_label = new Gtk.Label({ halign : Gtk.Align.START });
-            this.select_label.set_markup("<b>"+_("Apply Effect to")+"</b>");
+        // Select label
+        this.select_label = new Gtk.Label({ halign : Gtk.Align.START });
+        this.select_label.set_markup("<b>"+_("Apply Effect to")+"</b>");
 
-            // Dropdown menu
-            this.model = new Gtk.ListStore();
-            this.model.set_column_types([GObject.TYPE_INT, GObject.TYPE_STRING]);
+        // Dropdown menu
+        this.model = new Gtk.ListStore();
+        this.model.set_column_types([GObject.TYPE_INT, GObject.TYPE_STRING]);
 
-            this.combobox = new Gtk.ComboBox({model: this.model });
-            let renderer = new Gtk.CellRendererText();
-            this.combobox.pack_start(renderer, true);
-            this.combobox.add_attribute(renderer, 'text', 1);
+        this.combobox = new Gtk.ComboBox({model: this.model });
+        let renderer = new Gtk.CellRendererText();
+        this.combobox.pack_start(renderer, true);
+        this.combobox.add_attribute(renderer, 'text', 1);
 
-            this.model.set(this.model.append(), [0, 1], [1,_("Panel")]);
-            this.model.set(this.model.append(), [0, 1], [2,_("Activities Screen")]);
-            this.model.set(this.model.append(), [0, 1], [3,_("Activities + Panel")]);
+        this.model.set(this.model.append(), [0, 1], [1,_("Panel")]);
+        this.model.set(this.model.append(), [0, 1], [2,_("Activities Screen")]);
+        this.model.set(this.model.append(), [0, 1], [3,_("Activities + Panel")]);
 
-            this.combobox.set_active(this.mode - 1); // I know... the problems of starting the index with 1
-            
-            // Connect changed callback
-            this.combobox.connect('changed', Lang.bind(this, this._modeChanged));
+        this.combobox.set_active(this.mode - 1); // I know... the problems of starting the index with 1
+        
+        // Connect changed callback
+        this.combobox.connect('changed', Lang.bind(this, this._modeChanged));
 
-            this.selectBox.pack_start(this.select_label, true, true, 0);
-            this.selectBox.pack_start(this.combobox, true, true, 0);
-        }
+        this.selectBox.pack_start(this.select_label, true, true, 0);
+        this.selectBox.pack_start(this.combobox, true, true, 0);
 
         /*
         ** BLUR INTENSITY
@@ -155,23 +152,21 @@ const BlyrPrefsWidget = new Lang.Class ({
         /*
         ** PANEL BRIGHTNESS
         */
-        if(eligibleForPanelBlur) {
-            this.panelBrightnessBox = new Gtk.HBox({ spacing: 8, margin: 8, homogeneous: true });
+        this.panelBrightnessBox = new Gtk.HBox({ spacing: 8, margin: 8, homogeneous: true });
 
-            // Brightness label
-            let panel_brightness_label = new Gtk.Label({ halign : Gtk.Align.START });
-            panel_brightness_label.set_markup("<b>"+_("Panel Background Brightness")+"</b>");
-            
-            // Brightness slider
-            this.panel_brightness_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.0, 1.0,0.01);
-            this.panel_brightness_slider.set_value(this.panel_brightness);
+        // Brightness label
+        let panel_brightness_label = new Gtk.Label({ halign : Gtk.Align.START });
+        panel_brightness_label.set_markup("<b>"+_("Panel Background Brightness")+"</b>");
+        
+        // Brightness slider
+        this.panel_brightness_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.0, 1.0,0.01);
+        this.panel_brightness_slider.set_value(this.panel_brightness);
 
-            // Connect value-changed callback
-            this.panel_brightness_slider.connect('value-changed', Lang.bind(this, this._panelBrightnessChanged));
+        // Connect value-changed callback
+        this.panel_brightness_slider.connect('value-changed', Lang.bind(this, this._panelBrightnessChanged));
 
-            this.panelBrightnessBox.pack_start(panel_brightness_label, true, true, 0);
-            this.panelBrightnessBox.pack_start(this.panel_brightness_slider, true, true, 0);
-        }
+        this.panelBrightnessBox.pack_start(panel_brightness_label, true, true, 0);
+        this.panelBrightnessBox.pack_start(this.panel_brightness_slider, true, true, 0);
 
         /*
         ** ATTACH WIDGETS TO PARENT
@@ -181,8 +176,7 @@ const BlyrPrefsWidget = new Lang.Class ({
             this.pack_start(this.previewBox, false, false, 0);
 
         // Mode selector
-        if(eligibleForPanelBlur)
-            this.pack_start(this.selectBox, false, false, 0);
+        this.pack_start(this.selectBox, false, false, 0);
 
         // Intensity slider
         this.pack_start(this.intensityBox, false, false, 0);
@@ -191,8 +185,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         this.pack_start(this.activities_brightnessBox, false, false, 0);
 
         // Panel brightness slider
-        if(eligibleForPanelBlur)
-            this.pack_start(this.panelBrightnessBox, false, false, 0);
+        this.pack_start(this.panelBrightnessBox, false, false, 0);
     },
 
     _previewClicked: function() {

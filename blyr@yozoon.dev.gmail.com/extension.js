@@ -24,16 +24,15 @@ const Settings = Shared.getSettings(Shared.SCHEMA_NAME,
 
 const GSettings = new Gio.Settings({ schema_id: 'org.gnome.desktop.background' });
 
-const eligibleForPanelBlur = Shared.isEligibleForPanelBlur();
 const supportsNativeBlur = Shared.supportsNativeBlur();
 
 // Make a "backup" copy of the gnome-shell functions we are going to overwrite
 const _shadeBackgrounds = Main.overview._shadeBackgrounds;
 const _unshadeBackgrounds = Main.overview._unshadeBackgrounds;
 
-const OVERVIEW_CONTAINER_NAME = "blyr_overview_container";
-const OVERVIEW_BACKGROUND_NAME = "blyr_overview_background";
-const PANEL_CONTAINER_NAME = "blyr_panel_container";
+const OVERVIEW_CONTAINER_NAME = 'blyr_overview_container';
+const OVERVIEW_BACKGROUND_NAME = 'blyr_overview_background';
+const PANEL_CONTAINER_NAME = 'blyr_panel_container';
 const SHELL_BLUR_MODE_ACTOR = 0;
 
 function log(msg) {
@@ -44,184 +43,92 @@ function log(msg) {
 
 class Blyr {
     constructor(params) {
-        log("Starting Blyr extension...");
+        log('Starting extension...');
 
-        // Get current mode
-        this.mode = Settings.get_int('mode');
-
-        // Create variables
-        this.pMonitor = Main.layoutManager.primaryMonitor;
-        this.pIndex = Main.layoutManager.primaryIndex;
-        this.bgManager = Main.layoutManager._bgManagers[this.pIndex];
-
-        // Override mode if we can't blur the panel background
-        // Default to activities_only
-        if (!eligibleForPanelBlur)
-            this.mode = 2;
-
-        // Modify shell using current parameters and settings.
-        this._startup();
+        // Start in specified mode
+        this._enterMode();
 
         // Connect the listeners
         // Settings changed listeners
-        Shared.connectSmart(Settings, 'changed::mode', this, '_onModeChange');
-        Shared.connectSmart(Settings, 'changed::intensity', this, '_onIntensityChange');
-        Shared.connectSmart(Settings, 'changed::panelbrightness', this, '_onPanelBrightnessChange');
-        Shared.connectSmart(Settings, 'changed::activitiesbrightness', this, '_onActivitiesBrightnessChange');
+        Shared.connectSmart(Settings, 'changed::mode', this, '_enterMode');
+        Shared.connectSmart(Settings, 'changed::intensity', () => {
+            this._updateBlurredPanelActor();
+            this._updateBlurredOverviewActors();
+        });
+        Shared.connectSmart(Settings, 'changed::panelbrightness', this, '_updateBlurredPanelActor');
+        Shared.connectSmart(Settings, 'changed::activitiesbrightness', this, '_updateBlurredOverviewActors');
 
         // listens to changes of the wallpaper url in gsettings
         Shared.connectSmart(GSettings, 'changed::picture-uri', this, '_regenerateBlurredActors');
 
         // listens to changed signal on bg manager (useful if the url of a 
         // wallpaper doesn't change, but the wallpaper itself changed)
-        Shared.connectSmart(Main.layoutManager._bgManagers[this.pIndex], 'changed', this, 
-                            '_regenerateBlurredActors');
+        Shared.connectSmart(Main.layoutManager._bgManagers[Main.layoutManager.primaryIndex], 
+                            'changed', this, '_regenerateBlurredActors');
 
         // session mode listener used to recreate listeners in order to 
         // prevent unresponsive "orphan" listeners
         //Shared.connectSmart(Main.sessionMode, 'updated', this, '_connectListeners');
 
         // Monitors changed listener
-        Shared.connectSmart(Main.layoutManager, 'monitors-changed', this, '_onMonitorChange');
+        Shared.connectSmart(Main.layoutManager, 'monitors-changed', this, '_regenerateBlurredActors');
     }
 
-    _startup() {
-        switch (this.mode) {
-            case 1: // panel_only
-                // Apply panel blur
-                this._createBlurredPanelActor();
-                // Dim activities screen with brightness set from preferences
-                this._overrideVignetteEffect();
-                break;
-            case 2: // activities_only
-                // Disable vignette effect
-                this._disableVignetteEffect();
-                // Create overview background actors
-                this._createBlurredOverviewActors();
-                // Connect overview listeners
-                this._connectOverviewListeners();
-                break;
-            case 3: // blur_both
-                // Disable vignette effect
-                this._disableVignetteEffect();
-                // Apply panel blur
-                this._createBlurredPanelActor();
-                // activities_only
-                this._createBlurredOverviewActors();
-                // Connect overview listeners
-                this._connectOverviewListeners();
-                break;
+    _enterMode() {
+        let mode = Settings.get_int('mode');
+        log('Entering mode: ' + mode);
+        // Restore UI to initial state
+        this.restore();
+        if (mode == 1) { // Blur Panel only
+            // Apply panel blur
+            this._createBlurredPanelActor();
+            // Dim activities screen with brightness set from preferences
+            this._overrideVignetteEffect();
+        } else if (mode == 2) { // Blur Activities only
+            // Disable vignette effect
+            this._disableVignetteEffect();
+            // Create overview background actors
+            this._createBlurredOverviewActors();
+            // Connect overview listeners
+            this._connectOverviewListeners();
+        } else if (mode == 3) { // Blur Panel and Activities
+            // Disable vignette effect
+            this._disableVignetteEffect();
+            // Apply panel blur
+            this._createBlurredPanelActor();
+            // activities_only
+            this._createBlurredOverviewActors();
+            // Connect overview listeners
+            this._connectOverviewListeners();
+        } else {
+            log('Mode ' + mode + ' not defined');
         }
     }
 
     /***************************************************************
-     *                       Callbacks                             *
+     *                       Listeners                             *
      ***************************************************************/
-    _onIntensityChange() {
-        log('Blur intensity changed');
-        this._updateBlurredPanelActor();
-        this._updateBlurredOverviewActors();
-    }
-
-    _onActivitiesBrightnessChange() {
-        log('Activities brightness changed');
-        this._updateBlurredOverviewActors();
-    }
-
-    _onPanelBrightnessChange() {
-        log('Panel brightness changed');
-        this._updateBlurredPanelActor();
-    }
-
-    _onMonitorChange() {
-        log("monitors changed");
-        this._regenerateBlurredActors();
-    }
-
-    _onModeChange() {
-        log('Mode changed');
-        // Get mode before the user changed the mode
-        let oldmode = this.mode * 10;
-        // Get mode after the user changed the mode
-        this.mode = Settings.get_int("mode");
-
-        switch (oldmode + this.mode) {
-            case 12:
-                // The user switched from panel_only to activities_only
-                // Remove panel blur
-                this._removeBlurredActors(Main.layoutManager.panelBox, PANEL_CONTAINER_NAME);
-                // Disable vignette effect
-                this._disableVignetteEffect();
-                // Generate overview background actors
-                this._createBlurredOverviewActors();
-                // Register overview showing/hiding callback
-                this._connectOverviewListeners();
-                break;
-            case 13:
-                // The user switched from panel_only to blur_both
-                // Disable vignette effect
-                this._disableVignetteEffect();
-                // Generate overview background actors
-                this._createBlurredOverviewActors();
-                // Register overview showing/hiding callback
-                this._connectOverviewListeners();
-                break;
-            case 21:
-                // The user switched from activities_only to panel_only
-                // Remove the blurred backgrounds
-                this._removeBlurredActors(Main.overview._backgroundGroup, OVERVIEW_BACKGROUND_NAME);
-                // Unregister overview showing/hiding callback
-                this._disconnectOverviewListeners();
-                // Restore the vignette Effect
-                this._overrideVignetteEffect();
-                // Apply panel blur
-                this._createBlurredPanelActor();
-                break;
-            case 23:
-                // The user switched from activities_only to blur_both
-                // Apply blur to panel
-                this._createBlurredPanelActor();
-                break;
-            case 31:
-                // The user switched from blur_both to panel_only
-                // Remove the blurred backgrounds
-                this._removeBlurredActors(Main.overview._backgroundGroup, OVERVIEW_BACKGROUND_NAME);
-                // Unregister overview showing/hiding callback
-                this._disconnectOverviewListeners();
-                // Restore the vignette Effect
-                this._overrideVignetteEffect();
-                break;
-            case 32:
-                // The user switched from blur_both to activities_only
-                // Remove panel blur
-                this._removeBlurredActors(Main.layoutManager.panelBox, PANEL_CONTAINER_NAME);
-                break;
-            default:
-                break;
-        }
-    }
-
     _connectOverviewListeners() {
         // Overview showing listener
-        this.overview_showing_connection = Main.overview.connect("showing",
+        this.overview_showing_connection = Main.overview.connect('showing',
             function () {
                 // Fade out the untouched overview background actors to reveal 
                 // our copied actors.
                 Main.overview._backgroundGroup.get_children().forEach(
                     function (actor) {
-                        if (actor.is_realized() && actor["name"] != OVERVIEW_BACKGROUND_NAME)
+                        if (actor.is_realized() && actor['name'] != OVERVIEW_BACKGROUND_NAME)
                             this._fadeOut(actor);
                     }.bind(this));
             }.bind(this)
         );
         // Overview Hiding listener
-        this.overview_hiding_connection = Main.overview.connect("hiding",
+        this.overview_hiding_connection = Main.overview.connect('hiding',
             function () {
                 // Fade in the untouched overview background actors to cover 
                 // our copied actors.
                 Main.overview._backgroundGroup.get_children().forEach(
                     function (actor) {
-                        if (actor.is_realized() && actor["name"] != OVERVIEW_BACKGROUND_NAME)
+                        if (actor.is_realized() && actor['name'] != OVERVIEW_BACKGROUND_NAME)
                             this._fadeIn(actor);
                     }.bind(this));
             }.bind(this)
@@ -243,32 +150,11 @@ class Blyr {
         if (this.regeneration_timeout)
             return;
 
-        log('regenerate actors');
         // Delayed function call to let the old backgrounds fade out
         this.regeneration_timeout = GLib.timeout_add(GLib.PRIORITY_LOW, 100,
             function () {
-                switch (this.mode) {
-                    case 1: // panel_only
-                        // Recreate panel background blur actor
-                        this._createBlurredPanelActor();
-                        // Dim activities screen with brightness set from preferences
-                        this._overrideVignetteEffect();
-                        break;
-                    case 2: // activities_only
-                        // Disable vignette effect
-                        this._disableVignetteEffect();
-                        // Recreate overview background blur actors
-                        this._createBlurredOverviewActors();
-                        break;
-                    case 3: // blur_both
-                        // Recreate panel background blur actor
-                        this._createBlurredPanelActor();
-                        // Disable vignette effect
-                        this._disableVignetteEffect();
-                        // Recreate overview background blur actors
-                        this._createBlurredOverviewActors();
-                        break;
-                }
+                log('regenerate actors');
+                this._enterMode();
                 this.regeneration_timeout = null;
                 return GLib.SOURCE_REMOVE;
             }.bind(this)
@@ -280,19 +166,19 @@ class Blyr {
      ***************************************************************/
     _applyTwoPassBlur(actor, intensity, brightness=1.0) {
         if(supportsNativeBlur) {
-            if (!actor.get_effect("blur")) {
-                actor.add_effect_with_name("blur", new Shell.BlurEffect({
+            if (!actor.get_effect('blur')) {
+                actor.add_effect_with_name('blur', new Shell.BlurEffect({
                     mode: SHELL_BLUR_MODE_ACTOR,
                     brightness: parseFloat(brightness),
                     sigma: parseFloat(intensity),
                 }));
             }
         } else {
-            if (!actor.get_effect("vertical_blur"))
-                actor.add_effect_with_name("vertical_blur", new Effect.BlurEffect(
+            if (!actor.get_effect('vertical_blur'))
+                actor.add_effect_with_name('vertical_blur', new Effect.BlurEffect(
                     actor.width, actor.height, 0, intensity, brightness));
-            if (!actor.get_effect("horizontal_blur"))
-                actor.add_effect_with_name("horizontal_blur", new Effect.BlurEffect(
+            if (!actor.get_effect('horizontal_blur'))
+                actor.add_effect_with_name('horizontal_blur', new Effect.BlurEffect(
                     actor.width, actor.height, 1, intensity, brightness));
         }
     }
@@ -335,7 +221,7 @@ class Blyr {
      *                      Vignette Effect                        *
      ***************************************************************/
     _disableVignetteEffect() {
-        log("disable vignette effect");
+        log('disable vignette effect');
         // Remove the code responsible for the vignette effect
         Main.overview._shadeBackgrounds = function () { };
         Main.overview._unshadeBackgrounds = function () { };
@@ -347,13 +233,14 @@ class Blyr {
     }
 
     _overrideVignetteEffect() {
+        log('override vignette effect');
         // Inject a new function handling the shading of the activities background
         Main.overview._shadeBackgrounds = function () {
             Main.overview._backgroundGroup.get_children().forEach(function (actor) {
-                this.activities_brightness = Settings.get_double("activitiesbrightness");
+                this.activities_brightness = Settings.get_double('activitiesbrightness');
                 actor.vignette = true;
                 actor.brightness = 1.0;
-                actor["vignette_sharpness"] = 0;
+                actor['vignette_sharpness'] = 0;
                 if (actor.ease_property == undefined) {
                     Tweener.addTween(actor,
                         {
@@ -373,10 +260,10 @@ class Blyr {
         // Inject a new function handling the unshading of the activities background
         Main.overview._unshadeBackgrounds = function () {
             Main.overview._backgroundGroup.get_children().forEach(function (actor) {
-                this.activities_brightness = Settings.get_double("activitiesbrightness");
+                this.activities_brightness = Settings.get_double('activitiesbrightness');
                 actor.vignette = true;
                 actor.brightness = this.activities_brightness;
-                actor["vignette_sharpness"] = 0;
+                actor['vignette_sharpness'] = 0;
                 if (actor.ease_property == undefined) {
                     Tweener.addTween(actor,
                         {
@@ -411,14 +298,14 @@ class Blyr {
     _createBlurredOverviewActors() {
         // Remove current blurred background actors
         this._removeBlurredActors(Main.overview._backgroundGroup, OVERVIEW_BACKGROUND_NAME);
-        log("Creating blurred overview actors");
+        log('Creating blurred overview actors');
 
         // Update backgrounds to prevent ghost actors
         Main.overview._updateBackgrounds();
 
         // Get current activities background brighness and blur intensity value
-        let activities_brightness = Settings.get_double("activitiesbrightness");
-        let intensity = Settings.get_double("intensity");
+        let activities_brightness = Settings.get_double('activitiesbrightness');
+        let intensity = Settings.get_double('intensity');
 
         // Only create copies of background actors with full opacity
         // This is needed to prevent copying of actors which are currently beeing
@@ -436,11 +323,11 @@ class Blyr {
                     let blurred_bg = new Meta.BackgroundActor({
                         name: OVERVIEW_BACKGROUND_NAME,
                         background: bg.background,
-                        width: bg["width"],
-                        height: bg["height"],
-                        monitor: bg["monitor"],
-                        x: bg["x"],
-                        y: bg["y"],
+                        width: bg['width'],
+                        height: bg['height'],
+                        monitor: bg['monitor'],
+                        x: bg['x'],
+                        y: bg['y'],
                         reactive: true
                     });
 
@@ -457,12 +344,12 @@ class Blyr {
 
     _updateBlurredOverviewActors() {
         // Get current activities background brighness and blur intensity value
-        let activities_brightness = Settings.get_double("activitiesbrightness");
-        let intensity = Settings.get_double("intensity");
+        let activities_brightness = Settings.get_double('activitiesbrightness');
+        let intensity = Settings.get_double('intensity');
         // Remove and reapply blur effect for each actor
         Main.overview._backgroundGroup.get_children().forEach(
                 function (bg) {
-                    if (bg["name"] == OVERVIEW_BACKGROUND_NAME) {
+                    if (bg['name'] == OVERVIEW_BACKGROUND_NAME) {
                         bg.clear_effects();
                         this._applyTwoPassBlur(bg, intensity, activities_brightness);
                     }
@@ -476,7 +363,7 @@ class Blyr {
     _createBlurredPanelActor() {
         // Remove current blurred panel bgs
         this._removeBlurredActors(Main.layoutManager.panelBox, PANEL_CONTAINER_NAME);
-        log("Creating blurred panel actor");
+        log('Creating blurred panel actor');
 
         // Update backgrounds to prevent ghost actors
         Main.overview._updateBackgrounds();
@@ -504,7 +391,7 @@ class Blyr {
         // Clutter Actor with height 0 which will contain the actual blurred background
         this.panelContainer = new Clutter.Actor({
             name: PANEL_CONTAINER_NAME,
-            width: this.pMonitor.width,
+            width: Main.layoutManager.panelBox.width,
             height: 0
         });
 
@@ -512,8 +399,8 @@ class Blyr {
         // assign it, so we can modify it without influencing the main 
         // desktop background)
         this.panel_bg = new Meta.BackgroundActor({
-            background: this.primaryBackground["background"],
-            monitor: this.primaryBackground["monitor"],
+            background: this.primaryBackground['background'],
+            monitor: this.primaryBackground['monitor'],
             width: Main.layoutManager.panelBox.width,
             /* Needed to reduce edge darkening caused by high blur intensities */
             height: Main.layoutManager.panelBox.height*2,
@@ -527,8 +414,8 @@ class Blyr {
             Main.layoutManager.panelBox.height);
 
         // Get current panel brightness and blur intensity value
-        let panel_brightness = Settings.get_double("panelbrightness");
-        let intensity = Settings.get_double("intensity");
+        let panel_brightness = Settings.get_double('panelbrightness');
+        let intensity = Settings.get_double('intensity');
 
         // Apply the blur effect to the panel background
         this._applyTwoPassBlur(this.panel_bg, intensity, panel_brightness);
@@ -543,17 +430,16 @@ class Blyr {
 
     _updateBlurredPanelActor() {
         this.panel_bg.clear_effects();
-        let panel_brightness = Settings.get_double("panelbrightness");
-        let intensity = Settings.get_double("intensity");
+        let panel_brightness = Settings.get_double('panelbrightness');
+        let intensity = Settings.get_double('intensity');
         this._applyTwoPassBlur(this.panel_bg, intensity, panel_brightness);
     }
 
     /***************************************************************
      *                   Restore Shell State                       *
      ***************************************************************/
-    // TODO: Remove code duplication of _removePanelBlur and _removeOverviewBlur
     _removeBlurredActors(parent, name) {
-        log("removing blurred actors with the name: " + name);
+        log('removing blurred actors with the name: ' + name);
         parent.get_children().forEach(
             function (child) {
                 if(child.name == name) {
@@ -564,7 +450,7 @@ class Blyr {
         )
     }
 
-    disable() {
+    restore() {
         // Disconnect Listeners
         this._disconnectOverviewListeners();
 
@@ -586,5 +472,5 @@ function enable() {
 }
 
 function disable() {
-    blyr.disable();
+    blyr.restore();
 };

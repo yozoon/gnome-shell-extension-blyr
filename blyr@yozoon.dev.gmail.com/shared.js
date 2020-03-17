@@ -30,17 +30,6 @@ function checkShellVersion() {
     return shell_version;
 }
 
-function isEligibleForPanelBlur() {
-	let shell_version = checkShellVersion();
-	let eligible;
-	if(shell_version >= 326) {
-        eligible = true;
-    } else {
-        eligible = false;
-    }
-    return eligible;
-}
-
 function supportsNativeBlur() {
     let shell_version = checkShellVersion();
 	let native;
