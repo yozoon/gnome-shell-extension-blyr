@@ -44,6 +44,7 @@ const BlyrPrefsWidget = new Lang.Class ({
         this.intensity = this.settings.get_double("intensity");
         this.activities_brightness = this.settings.get_double("activitiesbrightness");
         this.panel_brightness = this.settings.get_double("panelbrightness");
+        this.panel_brightness_timeout = null;
 
         this._buildUI();
     },
@@ -292,7 +293,6 @@ function buildPrefsWidget() {
         log("Clutter or GtkClutter init failed with the following " + err);
     }
 
-    showPreview &= !supportsNativeBlur;
     let PrefsWidget = new BlyrPrefsWidget(showPreview);
     PrefsWidget.show_all();
 

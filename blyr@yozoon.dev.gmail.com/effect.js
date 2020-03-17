@@ -49,24 +49,17 @@ var BlurEffect = GObject.registerClass(
                 + "/shader.glsl");
             this.set_shader_source(this.SHADER);
 
-            // Store params
-            this.direction = direction;
-            this.width = width;
-            this.height = height;
-            this.intensity = intensity;
-            this.brightness = brightness;
-
             // Set shader values
-            this.set_uniform_value('dir', this.direction);
-            this.set_uniform_value('width', this.width);
-            this.set_uniform_value('height', this.height);
-            this.set_uniform_value('radius', parseFloat(this.intensity));
-            this.set_uniform_value('brightness', parseFloat(this.brightness));
+            this.set_uniform_value('dir', direction);
+            this.set_uniform_value('width', width);
+            this.set_uniform_value('height', height);
+            this.set_uniform_value('radius', parseFloat(intensity-1e-6));
+            this.set_uniform_value('brightness', parseFloat(brightness-1e-6));
         }
 
         updateUniforms(intensity, brightness) {
-            this.set_uniform_value('radius', parseFloat(intensity));
-            this.set_uniform_value('brightness', parseFloat(brightness));
+            this.set_uniform_value('radius', parseFloat(intensity-1e-6));
+            this.set_uniform_value('brightness', parseFloat(brightness-1e-6));
         }
     }
 );

@@ -80,7 +80,7 @@ class Blyr {
         switch (this.mode) {
             case 1: // panel_only
                 // Apply panel blur
-                this._applyPanelBlur();
+                this._createBlurredPanelActor();
                 // Dim activities screen with brightness set from preferences
                 this._overrideVignetteEffect();
                 break;
@@ -88,7 +88,7 @@ class Blyr {
                 // Disable vignette effect
                 this._disableVignetteEffect();
                 // Create overview background actors
-                this._createOverviewBackgrounds();
+                this._createBlurredOverviewActors();
                 // Connect overview listeners
                 this._connectOverviewListeners();
                 break;
@@ -96,9 +96,9 @@ class Blyr {
                 // Disable vignette effect
                 this._disableVignetteEffect();
                 // Apply panel blur
-                this._applyPanelBlur();
+                this._createBlurredPanelActor();
                 // activities_only
-                this._createOverviewBackgrounds();
+                this._createBlurredOverviewActors();
                 // Connect overview listeners
                 this._connectOverviewListeners();
                 break;
@@ -142,16 +142,16 @@ class Blyr {
                     switch (this.mode) {
                         case 1:
                             // panel_only
-                            this._updatePanelBlur();
+                            this._updateBlurredPanelActor();
                             break;
                         case 2:
                             // activities_only
-                            this._updateOverviewBackgrounds();
+                            this._updateBlurredOverviewActors();
                             break;
                         case 3:
                             // blur_both
-                            this._updatePanelBlur();
-                            this._updateOverviewBackgrounds();
+                            this._updateBlurredPanelActor();
+                            this._updateBlurredOverviewActors();
                             break;
                     }
                 }
@@ -260,11 +260,11 @@ class Blyr {
             case 12:
                 // The user switched from panel_only to activities_only
                 // Remove panel blur
-                this._removePanelBlur();
+                this._removeBlurredActors(Main.layoutManager.panelBox, PANEL_CONTAINER_NAME);
                 // Disable vignette effect
                 this._disableVignetteEffect();
                 // Generate overview background actors
-                this._createOverviewBackgrounds();
+                this._createBlurredOverviewActors();
                 // Register overview showing/hiding callback
                 this._connectOverviewListeners();
                 break;
@@ -273,30 +273,30 @@ class Blyr {
                 // Disable vignette effect
                 this._disableVignetteEffect();
                 // Generate overview background actors
-                this._createOverviewBackgrounds();
+                this._createBlurredOverviewActors();
                 // Register overview showing/hiding callback
                 this._connectOverviewListeners();
                 break;
             case 21:
                 // The user switched from activities_only to panel_only
                 // Remove the blurred backgrounds
-                this._removeOverviewBackgrounds();
+                this._removeBlurredActors(Main.overview._backgroundGroup, OVERVIEW_BACKGROUND_NAME);
                 // Unregister overview showing/hiding callback
                 this._disconnectOverviewListeners();
                 // Restore the vignette Effect
                 this._overrideVignetteEffect();
                 // Apply panel blur
-                this._applyPanelBlur();
+                this._createBlurredPanelActor();
                 break;
             case 23:
                 // The user switched from activities_only to blur_both
                 // Apply blur to panel
-                this._applyPanelBlur();
+                this._createBlurredPanelActor();
                 break;
             case 31:
                 // The user switched from blur_both to panel_only
                 // Remove the blurred backgrounds
-                this._removeOverviewBackgrounds();
+                this._removeBlurredActors(Main.overview._backgroundGroup, OVERVIEW_BACKGROUND_NAME);
                 // Unregister overview showing/hiding callback
                 this._disconnectOverviewListeners();
                 // Restore the vignette Effect
@@ -305,7 +305,7 @@ class Blyr {
             case 32:
                 // The user switched from blur_both to activities_only
                 // Remove panel blur
-                this._removePanelBlur();
+                this._removeBlurredActors(Main.layoutManager.panelBox, PANEL_CONTAINER_NAME);
                 break;
             default:
                 break;
@@ -320,8 +320,7 @@ class Blyr {
                 switch (this.mode) {
                     case 1: // panel_only
                         // Recreate panel background blur actor
-                        this._removePanelBlur();
-                        this._applyPanelBlur();
+                        this._createBlurredPanelActor();
                         // Dim activities screen with brightness set from preferences
                         this._overrideVignetteEffect();
                         break;
@@ -329,16 +328,15 @@ class Blyr {
                         // Disable vignette effect
                         this._disableVignetteEffect();
                         // Recreate overview background blur actors
-                        this._createOverviewBackgrounds();
+                        this._createBlurredOverviewActors();
                         break;
                     case 3: // blur_both
                         // Recreate panel background blur actor
-                        this._removePanelBlur();
-                        this._applyPanelBlur();
+                        this._createBlurredPanelActor();
                         // Disable vignette effect
                         this._disableVignetteEffect();
                         // Recreate overview background blur actors
-                        this._createOverviewBackgrounds();
+                        this._createBlurredOverviewActors();
                         break;
                 }
                 return GLib.SOURCE_REMOVE;
@@ -479,9 +477,10 @@ class Blyr {
     /***************************************************************
      *                    Overview Backgrounds                     *
      ***************************************************************/
-    _createOverviewBackgrounds() {
-        this._removeOverviewBackgrounds();
-        log("Create overview backgrounds");
+    _createBlurredOverviewActors() {
+        // Remove current blurred background actors
+        this._removeBlurredActors(Main.overview._backgroundGroup, OVERVIEW_BACKGROUND_NAME);
+        log("Creating blurred overview actors");
 
         // Update backgrounds to prevent ghost actors
         Main.overview._updateBackgrounds();
@@ -525,7 +524,7 @@ class Blyr {
         );
     }
 
-    _updateOverviewBackgrounds() {
+    _updateBlurredOverviewActors() {
         // Get current activities background brighness and blur intensity value
         let activities_brightness = settings.get_double("activitiesbrightness");
         let intensity = settings.get_double("intensity");
@@ -543,9 +542,10 @@ class Blyr {
     /***************************************************************
      *                     Panel Background                        *
      ***************************************************************/
-    _applyPanelBlur() {
-        this._removePanelBlur();
-        log("apply panel blur");
+    _createBlurredPanelActor() {
+        // Remove current blurred panel bgs
+        this._removeBlurredActors(Main.layoutManager.panelBox, PANEL_CONTAINER_NAME);
+        log("Creating blurred panel actor");
 
         // Update backgrounds to prevent ghost actors
         Main.overview._updateBackgrounds();
@@ -574,8 +574,7 @@ class Blyr {
         this.panelContainer = new Clutter.Actor({
             name: PANEL_CONTAINER_NAME,
             width: this.pMonitor.width,
-            height: 0,
-            reactive: true
+            height: 0
         });
 
         // Clone primary background instance (we need to clone it, not just 
@@ -611,7 +610,7 @@ class Blyr {
         Main.layoutManager.panelBox.set_child_at_index(this.panelContainer, 0);
     }
 
-    _updatePanelBlur() {
+    _updateBlurredPanelActor() {
         this.panel_bg.clear_effects();
         let panel_brightness = settings.get_double("panelbrightness");
         let intensity = settings.get_double("intensity");
@@ -621,29 +620,17 @@ class Blyr {
     /***************************************************************
      *                   Restore Shell State                       *
      ***************************************************************/
-    // TODO: Remove code duplication of _removePanelBlur and _removeOverviewBackgrounds
-    _removePanelBlur() {
-        Main.layoutManager.panelBox.get_children().forEach(
+    // TODO: Remove code duplication of _removePanelBlur and _removeOverviewBlur
+    _removeBlurredActors(parent, name) {
+        log("removing blurred actors with the name: " + name);
+        parent.get_children().forEach(
             function (child) {
-                if (child.name == PANEL_CONTAINER_NAME) {
-                    Main.layoutManager.panelBox.remove_child(child);
-                    child.destroy();
-                    this.panelContainer = null;
-                }
-            }.bind(this)
-        );
-    }
-
-    _removeOverviewBackgrounds() {
-        log("removing backgrounds");
-        Main.overview._backgroundGroup.get_children().forEach(
-            function (child) {
-                if (child.name == OVERVIEW_BACKGROUND_NAME) {
-                    Main.layoutManager.overviewGroup.remove_child(child);
+                if(child.name == name) {
+                    parent.remove_child(child);
                     child.destroy();
                 }
-            }.bind(this)
-        );
+            }
+        )
     }
 
     disable() {
@@ -652,8 +639,8 @@ class Blyr {
         this._disconnectOverviewListeners();
 
         // Remove modified backgrounds
-        this._removePanelBlur();
-        this._removeOverviewBackgrounds();
+        this._removeBlurredActors(Main.layoutManager.panelBox, PANEL_CONTAINER_NAME);
+        this._removeBlurredActors(Main.overview._backgroundGroup, OVERVIEW_BACKGROUND_NAME);
 
         // Restore vignette effect
         this._restoreVignetteEffect();
