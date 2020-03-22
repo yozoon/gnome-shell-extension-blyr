@@ -1,8 +1,20 @@
-/**
- * Blyr main extension class
- * Copyright © 2017-2020 Julius Piso, All rights reserved
- * This file is distributed under the same license as Blyr.
- **/
+/*
+  This file is part of Blyr.
+  Copyright © 2017-2020 Julius Piso
+
+  Blyr is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Blyr is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with Blyr.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
 const Gio = imports.gi.Gio;
 const Meta = imports.gi.Meta;
@@ -19,6 +31,7 @@ const LoginManager = imports.misc.loginManager;
 const Extension = ExtensionUtils.getCurrentExtension();
 const Effect = Extension.imports.effect;
 const Shared = Extension.imports.shared;
+const Connections = Extension.imports.connections;
 const Settings = Shared.getSettings(Shared.SCHEMA_NAME,
     Extension.dir.get_child('schemas').get_path());
 
@@ -50,28 +63,29 @@ class Blyr {
 
         // Connect the listeners
         // Settings changed listeners
-        Shared.connectSmart(Settings, 'changed::mode', this, '_enterMode');
-        Shared.connectSmart(Settings, 'changed::intensity', () => {
+        Connections.connectSmart(Settings, 'changed::mode', this, '_enterMode');
+        Connections.connectSmart(Settings, 'changed::intensity', () => {
             this._updateBlurredPanelActor();
             this._updateBlurredOverviewActors();
         });
-        Shared.connectSmart(Settings, 'changed::panelbrightness', this, '_updateBlurredPanelActor');
-        Shared.connectSmart(Settings, 'changed::activitiesbrightness', this, '_updateBlurredOverviewActors');
+        Connections.connectSmart(Settings, 'changed::panelbrightness', this, '_updateBlurredPanelActor');
+        Connections.connectSmart(Settings, 'changed::activitiesbrightness', this, '_updateBlurredOverviewActors');
 
         // listens to changes of the wallpaper url in gsettings
-        Shared.connectSmart(GSettings, 'changed::picture-uri', this, '_regenerateBlurredActors');
+        Connections.connectSmart(GSettings, 'changed::picture-uri', this, '_regenerateBlurredActors');
 
         // listens to changed signal on bg manager (useful if the url of a 
         // wallpaper doesn't change, but the wallpaper itself changed)
-        Shared.connectSmart(Main.layoutManager._bgManagers[Main.layoutManager.primaryIndex], 
+        Connections.connectSmart(Main.layoutManager._bgManagers[Main.layoutManager.primaryIndex], 
                             'changed', this, '_regenerateBlurredActors');
 
-        // session mode listener used to recreate listeners in order to 
-        // prevent unresponsive "orphan" listeners
-        //Shared.connectSmart(Main.sessionMode, 'updated', this, '_connectListeners');
+        // session mode listener
+        //Connections.connectSmart(Main.sessionMode, 'updated', this, '_onSessionModeChange');
+
+        Connections.connectSmart(Main.layoutManager, 'startup-complete', this, '_regenerateBlurredActors');
 
         // Monitors changed listener
-        Shared.connectSmart(Main.layoutManager, 'monitors-changed', this, '_regenerateBlurredActors');
+        Connections.connectSmart(Main.layoutManager, 'monitors-changed', this, '_regenerateBlurredActors');
     }
 
     _enterMode() {
@@ -105,33 +119,48 @@ class Blyr {
         }
     }
 
+    _regenerateBlurredActors() {
+        if (this.regeneration_timeout)
+            return;
+
+        // Delayed function call to let the old backgrounds fade out
+        this.regeneration_timeout = GLib.timeout_add(GLib.PRIORITY_LOW, 100,
+            () => {
+                log('regenerate actors');
+                this._enterMode();
+                this.regeneration_timeout = null;
+                return GLib.SOURCE_REMOVE;
+            }
+        );
+    }
+
     /***************************************************************
      *                       Listeners                             *
      ***************************************************************/
     _connectOverviewListeners() {
         // Overview showing listener
         this.overview_showing_connection = Main.overview.connect('showing',
-            function () {
+            () => {
                 // Fade out the untouched overview background actors to reveal 
                 // our copied actors.
                 Main.overview._backgroundGroup.get_children().forEach(
-                    function (actor) {
+                    (actor) => {
                         if (actor.is_realized() && actor['name'] != OVERVIEW_BACKGROUND_NAME)
                             this._fadeOut(actor);
-                    }.bind(this));
-            }.bind(this)
+                    });
+            }
         );
         // Overview Hiding listener
         this.overview_hiding_connection = Main.overview.connect('hiding',
-            function () {
+            () => {
                 // Fade in the untouched overview background actors to cover 
                 // our copied actors.
                 Main.overview._backgroundGroup.get_children().forEach(
-                    function (actor) {
+                    (actor) => {
                         if (actor.is_realized() && actor['name'] != OVERVIEW_BACKGROUND_NAME)
                             this._fadeIn(actor);
-                    }.bind(this));
-            }.bind(this)
+                    });
+            }
         );
     }
 
@@ -144,21 +173,6 @@ class Blyr {
             Main.overview.disconnect(this.overview_hiding_connection);
             this.overview_hiding_connection = null;
         }
-    }
-
-    _regenerateBlurredActors() {
-        if (this.regeneration_timeout)
-            return;
-
-        // Delayed function call to let the old backgrounds fade out
-        this.regeneration_timeout = GLib.timeout_add(GLib.PRIORITY_LOW, 100,
-            function () {
-                log('regenerate actors');
-                this._enterMode();
-                this.regeneration_timeout = null;
-                return GLib.SOURCE_REMOVE;
-            }.bind(this)
-        );
     }
 
     /***************************************************************
@@ -227,7 +241,7 @@ class Blyr {
         Main.overview._unshadeBackgrounds = function () { };
 
         // Disable the vignette effect for each actor
-        Main.overview._backgroundGroup.get_children().forEach(function (actor) {
+        Main.overview._backgroundGroup.get_children().forEach((actor) => {
             actor.vignette = false;
         }, null);
     }
@@ -236,7 +250,7 @@ class Blyr {
         log('override vignette effect');
         // Inject a new function handling the shading of the activities background
         Main.overview._shadeBackgrounds = function () {
-            Main.overview._backgroundGroup.get_children().forEach(function (actor) {
+            Main.overview._backgroundGroup.get_children().forEach((actor) => {
                 this.activities_brightness = Settings.get_double('activitiesbrightness');
                 actor.vignette = true;
                 actor.brightness = 1.0;
@@ -259,7 +273,7 @@ class Blyr {
 
         // Inject a new function handling the unshading of the activities background
         Main.overview._unshadeBackgrounds = function () {
-            Main.overview._backgroundGroup.get_children().forEach(function (actor) {
+            Main.overview._backgroundGroup.get_children().forEach((actor) => {
                 this.activities_brightness = Settings.get_double('activitiesbrightness');
                 actor.vignette = true;
                 actor.brightness = this.activities_brightness;
@@ -287,7 +301,7 @@ class Blyr {
         Main.overview._unshadeBackgrounds = _unshadeBackgrounds;
 
         // Re-enable the vignette effect for each actor
-        Main.overview._backgroundGroup.get_children().forEach(function (actor) {
+        Main.overview._backgroundGroup.get_children().forEach((actor) => {
             actor.vignette = true;
         }, null);
     }
@@ -314,7 +328,7 @@ class Blyr {
         // which are beeing phased out later causes issues as they appear as plane
         // white backgrounds instead of the actual image.
         Main.overview._backgroundGroup.get_children().forEach(
-            function (bg) {
+            (bg) => {
                 if (bg.opacity == 255) {
                     bg.vignette = false;
                     bg.brightness = 1.0;
@@ -338,7 +352,7 @@ class Blyr {
                     Main.overview._backgroundGroup.add_child(blurred_bg);
                     Main.overview._backgroundGroup.set_child_below_sibling(blurred_bg, bg);
                 }
-            }.bind(this)
+            }
         );
     }
 
@@ -348,12 +362,12 @@ class Blyr {
         let intensity = Settings.get_double('intensity');
         // Remove and reapply blur effect for each actor
         Main.overview._backgroundGroup.get_children().forEach(
-                function (bg) {
+                (bg) => {
                     if (bg['name'] == OVERVIEW_BACKGROUND_NAME) {
                         bg.clear_effects();
                         this._applyTwoPassBlur(bg, intensity, activities_brightness);
                     }
-                }.bind(this)
+                }
         );
     }
 
@@ -371,14 +385,14 @@ class Blyr {
         // Create list of backgrounds with full opacity
         let bgs = [];
         Main.overview._backgroundGroup.get_children().forEach(
-            function (bg) {
+            (bg) => {
                 if (bg.opacity == 255 && bg.visible) {
                     bgs.push(bg);
                 }
-            }.bind(this));
+            });
 
         // Calculate index of primary background
-        // Check wheter the global display object has a get_primary_display method
+        // Check wheter the global display object has a get_primary_monitor method
         if (global.display.get_primary_monitor == undefined) {
             var bgIndex = bgs.length - global.screen.get_primary_monitor() - 1;
         } else {
@@ -391,7 +405,7 @@ class Blyr {
         // Clutter Actor with height 0 which will contain the actual blurred background
         this.panelContainer = new Clutter.Actor({
             name: PANEL_CONTAINER_NAME,
-            width: Main.layoutManager.panelBox.width,
+            width: this.primaryBackground.width,
             height: 0
         });
 
@@ -401,7 +415,7 @@ class Blyr {
         this.panel_bg = new Meta.BackgroundActor({
             background: this.primaryBackground['background'],
             monitor: this.primaryBackground['monitor'],
-            width: Main.layoutManager.panelBox.width,
+            width: this.primaryBackground.width,
             /* Needed to reduce edge darkening caused by high blur intensities */
             height: Main.layoutManager.panelBox.height*2,
             x: 0,
@@ -441,7 +455,7 @@ class Blyr {
     _removeBlurredActors(parent, name) {
         log('removing blurred actors with the name: ' + name);
         parent.get_children().forEach(
-            function (child) {
+            (child) => {
                 if(child.name == name) {
                     parent.remove_child(child);
                     child.destroy();

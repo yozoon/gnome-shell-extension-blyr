@@ -22,8 +22,8 @@
       <summary>Selects UI elements</summary>
       <description>Selects the UI elements to get a blurred background; 1 = panel-only, 2 = activities-only, 3 = blur-both</description>
     </key>
-    <key name="debug-logging" type="b">
-      <default>true</default>
+    <key type="b" name="debug-logging">
+      <default>false</default>
       <summary>Log messages to systemd journal</summary>
       <description>Helpful for debugging purposes</description>
     </key>
