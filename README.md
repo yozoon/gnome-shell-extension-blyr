@@ -32,7 +32,7 @@ Install *blyr* using the official repository:
 ### Manual
 
 ```bash
-git clone git@github.com:yozoon/gnome-shell-extension-blyr.git
+git clone https://github.com/yozoon/gnome-shell-extension-blyr.git
 cd gnome-shell-extension-blyr/
 make local-install
 ```
