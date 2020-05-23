@@ -82,6 +82,14 @@ class Blyr {
         // session mode listener
         //Connections.connectSmart(Main.sessionMode, 'updated', this, '_onSessionModeChange');
 
+        // screensaver listener
+        Connections.connectSmart(Main.screenShield, 'locked-changed', () => {
+            // let's refresh the effect only if the screensaver is disabled
+            if (!Main.screenShield.locked) {
+                this._regenerateBlurredActors();
+            }
+        });
+
         Connections.connectSmart(Main.layoutManager, 'startup-complete', this, '_regenerateBlurredActors');
 
         // Monitors changed listener
