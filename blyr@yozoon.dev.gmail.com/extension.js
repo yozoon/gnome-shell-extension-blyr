@@ -93,7 +93,11 @@ class Blyr {
         Connections.connectSmart(Main.layoutManager, 'startup-complete', this, '_regenerateBlurredActors');
 
         // Monitors changed listener
-        Connections.connectSmart(Main.layoutManager, 'monitors-changed', this, '_regenerateBlurredActors');
+        Connections.connectSmart(Main.layoutManager, 'monitors-changed', () => {
+            if (!Main.screenShield.locked) {
+                this._regenerateBlurredActors();
+            }
+        });
     }
 
     _enterMode() {
