@@ -82,10 +82,22 @@ class Blyr {
         // session mode listener
         //Connections.connectSmart(Main.sessionMode, 'updated', this, '_onSessionModeChange');
 
+        // screensaver listener
+        Connections.connectSmart(Main.screenShield, 'locked-changed', () => {
+            // let's refresh the effect only if the screensaver is disabled
+            if (!Main.screenShield.locked) {
+                this._regenerateBlurredActors();
+            }
+        });
+
         Connections.connectSmart(Main.layoutManager, 'startup-complete', this, '_regenerateBlurredActors');
 
         // Monitors changed listener
-        Connections.connectSmart(Main.layoutManager, 'monitors-changed', this, '_regenerateBlurredActors');
+        Connections.connectSmart(Main.layoutManager, 'monitors-changed', () => {
+            if (!Main.screenShield.locked) {
+                this._regenerateBlurredActors();
+            }
+        });
     }
 
     _enterMode() {
@@ -409,6 +421,8 @@ class Blyr {
             height: 0
         });
 
+        let [tpx, tpy] = Main.layoutManager.panelBox.get_transformed_position();
+
         // Clone primary background instance (we need to clone it, not just 
         // assign it, so we can modify it without influencing the main 
         // desktop background)
@@ -416,15 +430,17 @@ class Blyr {
             background: this.primaryBackground['background'],
             monitor: this.primaryBackground['monitor'],
             width: this.primaryBackground.width,
-            /* Needed to reduce edge darkening caused by high blur intensities */
-            height: Main.layoutManager.panelBox.height*2,
-            x: 0,
-            y: 0
+            height: this.primaryBackground.height,
+            x: -1 * tpx,
+            y: -1 * tpy
         });
 
         // Only show one part of the panel background actor as large as the 
         // panel itself
-        this.panel_bg.set_clip(0, 0, Main.layoutManager.panelBox.width,
+        this.panel_bg.set_clip(
+            tpx,
+            tpy,
+            Main.layoutManager.panelBox.width,
             Main.layoutManager.panelBox.height);
 
         // Get current panel brightness and blur intensity value
