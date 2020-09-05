@@ -1,0 +1,47 @@
+# Blyr translation file
+# Copyright (C) 2017 Jonatan Hatakeyama Zeidler
+# This file is distributed under the same license as Blyr.
+# Jonatan Hatakeyama Zeidler jonatan_zeidler@, 2017.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Blyr\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2017-12-03 16:24+0100\n"
+"PO-Revision-Date: 2020-09-05 18:10+0200\n"
+"Language-Team: Jonatan Hatakeyama Zeidler\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 2.4.1\n"
+"Last-Translator: Heimen Stoffels <vistausss@outlook.com>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Language: nl\n"
+
+#: prefs.js:123
+msgid "Apply Effect to"
+msgstr "Effect toepassen op"
+
+#: prefs.js:134
+msgid "Panel"
+msgstr "Paneel"
+
+#: prefs.js:135
+msgid "Activities Screen"
+msgstr "Activiteitenoverzicht"
+
+#: prefs.js:136
+msgid "Activities + Panel"
+msgstr "Activiteitenoverzicht en paneel"
+
+#: prefs.js:153
+msgid "Blur Intensity"
+msgstr "Vervaagintensiteit"
+
+#: prefs.js:172
+msgid "Activities Background Brightness"
+msgstr "Helderheid van activiteitenachtergrond"
+
+#: prefs.js:193
+msgid "Panel Background Brightness"
+msgstr "Helderheid van paneelachtergrond"
