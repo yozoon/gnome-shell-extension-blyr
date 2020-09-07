@@ -1,7 +1,7 @@
 # Blyr translation file
 # Copyright (C) 2017 Jonatan Hatakeyama Zeidler
 # This file is distributed under the same license as Blyr.
-# Jonatan Hatakeyama Zeidler jonatan_zeidler@, 2017.
+# First translator: Heimen Stoffels, <vistausss@outlook.com>, 2020
 #
 msgid ""
 msgstr ""
