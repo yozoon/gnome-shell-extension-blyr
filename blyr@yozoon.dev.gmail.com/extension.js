@@ -23,7 +23,6 @@ const Shell = imports.gi.Shell;
 const Clutter = imports.gi.Clutter;
 
 const Main = imports.ui.main;
-const Tweener = imports.ui.tweener;
 const Overview = imports.ui.overview;
 const ExtensionUtils = imports.misc.extensionUtils;
 const LoginManager = imports.misc.loginManager;
@@ -212,12 +211,7 @@ class Blyr {
     _fadeIn(actor) {
         // Transition animation: change opacity to 255 (fully opaque)
         if (actor.ease_property == undefined) {
-            Tweener.addTween(actor,
-                {
-                    opacity: 255,
-                    time: Overview.SHADE_ANIMATION_TIME,
-                    transition: 'easeOutQuad'
-                });
+            //TODO: Fix animation
         } else {
             actor.ease_property('opacity', 255, {
                 duration: Overview.SHADE_ANIMATION_TIME,
@@ -229,12 +223,7 @@ class Blyr {
     _fadeOut(actor) {
         // Transition animation: change opacity to 0 (fully transparent)
         if (actor.ease_property == undefined) {
-            Tweener.addTween(actor,
-                {
-                    opacity: 0,
-                    time: Overview.SHADE_ANIMATION_TIME,
-                    transition: 'easeOutQuad'
-                });
+            //TODO: Fix animation
         } else {
             actor.ease_property('opacity', 0, {
                 duration: Overview.SHADE_ANIMATION_TIME,
@@ -268,12 +257,7 @@ class Blyr {
                 actor.brightness = 1.0;
                 actor['vignette_sharpness'] = 0;
                 if (actor.ease_property == undefined) {
-                    Tweener.addTween(actor,
-                        {
-                            brightness: this.activities_brightness,
-                            time: Overview.SHADE_ANIMATION_TIME,
-                            transition: 'easeOutQuad'
-                        });
+                    //TODO: Fix animation
                 } else {
                     actor.ease_property('brightness', this.activities_brightness, {
                         duration: Overview.SHADE_ANIMATION_TIME,
@@ -291,12 +275,7 @@ class Blyr {
                 actor.brightness = this.activities_brightness;
                 actor['vignette_sharpness'] = 0;
                 if (actor.ease_property == undefined) {
-                    Tweener.addTween(actor,
-                        {
-                            brightness: 1.0,
-                            time: Overview.SHADE_ANIMATION_TIME,
-                            transition: 'easeOutQuad'
-                        });
+                    //TODO: Fix animation
                 } else {
                     actor.ease_property('brightness', 1.0, {
                         duration: Overview.SHADE_ANIMATION_TIME,
