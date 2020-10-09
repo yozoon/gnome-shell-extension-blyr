@@ -327,7 +327,7 @@ class Blyr {
                     // Clone the background actor
                     let blurred_bg = new Meta.BackgroundActor({
                         name: OVERVIEW_BACKGROUND_NAME,
-                        background: bg.background,
+                        content: bg.content,
                         width: bg['width'],
                         height: bg['height'],
                         monitor: bg['monitor'],
@@ -406,7 +406,7 @@ class Blyr {
         // assign it, so we can modify it without influencing the main 
         // desktop background)
         this.panel_bg = new Meta.BackgroundActor({
-            background: this.primaryBackground['background'],
+            content: this.primaryBackground['content'],
             monitor: this.primaryBackground['monitor'],
             width: this.primaryBackground.width,
             height: this.primaryBackground.height,
