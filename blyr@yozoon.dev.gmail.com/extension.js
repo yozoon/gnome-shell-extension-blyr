@@ -23,7 +23,6 @@ const Shell = imports.gi.Shell;
 const Clutter = imports.gi.Clutter;
 
 const Main = imports.ui.main;
-const Tweener = imports.ui.tweener;
 const Overview = imports.ui.overview;
 const ExtensionUtils = imports.misc.extensionUtils;
 const LoginManager = imports.misc.loginManager;
@@ -47,6 +46,10 @@ const OVERVIEW_CONTAINER_NAME = 'blyr_overview_container';
 const OVERVIEW_BACKGROUND_NAME = 'blyr_overview_background';
 const PANEL_CONTAINER_NAME = 'blyr_panel_container';
 const SHELL_BLUR_MODE_ACTOR = 0;
+
+if (Shared.checkShellVersion() < 338) {
+    var Tweener = imports.ui.tweener;
+}
 
 function log(msg) {
     if (Settings.get_boolean('debug-logging')) {
@@ -254,7 +257,11 @@ class Blyr {
 
         // Disable the vignette effect for each actor
         Main.overview._backgroundGroup.get_children().forEach((actor) => {
-            actor.vignette = false;
+            if (Shared.hasNewBackgroundActor()) {
+                actor.content.vignette = false;
+            } else {
+                actor.vignette = false;
+            }
         }, null);
     }
 
@@ -264,21 +271,28 @@ class Blyr {
         Main.overview._shadeBackgrounds = function () {
             Main.overview._backgroundGroup.get_children().forEach((actor) => {
                 this.activities_brightness = Settings.get_double('activitiesbrightness');
-                actor.vignette = true;
-                actor.brightness = 1.0;
-                actor['vignette_sharpness'] = 0;
-                if (actor.ease_property == undefined) {
-                    Tweener.addTween(actor,
-                        {
-                            brightness: this.activities_brightness,
-                            time: Overview.SHADE_ANIMATION_TIME,
-                            transition: 'easeOutQuad'
-                        });
+                if (Shared.hasNewBackgroundActor()) {
+                    actor.content.vignette = false;
+                    actor.content.brightness = this.activities_brightness;
+                    actor.content.vignette_sharpness = 0;
+
                 } else {
-                    actor.ease_property('brightness', this.activities_brightness, {
-                        duration: Overview.SHADE_ANIMATION_TIME,
-                        mode: Clutter.AnimationMode.EASE_OUT_QUAD
-                    });
+                    actor.vignette = true;
+                    actor.brightness = 1.0;
+                    actor['vignette_sharpness'] = 0;
+                    if (actor.ease_property == undefined) {
+                        Tweener.addTween(actor,
+                            {
+                                brightness: this.activities_brightness,
+                                time: Overview.SHADE_ANIMATION_TIME,
+                                transition: 'easeOutQuad'
+                            });
+                    } else {
+                        actor.ease_property('brightness', this.activities_brightness, {
+                            duration: Overview.SHADE_ANIMATION_TIME,
+                            mode: Clutter.AnimationMode.EASE_OUT_QUAD
+                        });
+                    }
                 }
             }, this)
         };
@@ -287,21 +301,27 @@ class Blyr {
         Main.overview._unshadeBackgrounds = function () {
             Main.overview._backgroundGroup.get_children().forEach((actor) => {
                 this.activities_brightness = Settings.get_double('activitiesbrightness');
-                actor.vignette = true;
-                actor.brightness = this.activities_brightness;
-                actor['vignette_sharpness'] = 0;
-                if (actor.ease_property == undefined) {
-                    Tweener.addTween(actor,
-                        {
-                            brightness: 1.0,
-                            time: Overview.SHADE_ANIMATION_TIME,
-                            transition: 'easeOutQuad'
-                        });
+                if (Shared.hasNewBackgroundActor()) {
+                    actor.content.vignette = true;
+                    actor.content.brightness = 1.0;
+                    actor.content.vignette_sharpness = 0;
                 } else {
-                    actor.ease_property('brightness', 1.0, {
-                        duration: Overview.SHADE_ANIMATION_TIME,
-                        mode: Clutter.AnimationMode.EASE_OUT_QUAD
-                    });
+                    actor.vignette = true;
+                    actor.brightness = this.activities_brightness;
+                    actor['vignette_sharpness'] = 0;
+                    if (actor.ease_property == undefined) {
+                        Tweener.addTween(actor,
+                            {
+                                brightness: 1.0,
+                                time: Overview.SHADE_ANIMATION_TIME,
+                                transition: 'easeOutQuad'
+                            });
+                    } else {
+                        actor.ease_property('brightness', 1.0, {
+                            duration: Overview.SHADE_ANIMATION_TIME,
+                            mode: Clutter.AnimationMode.EASE_OUT_QUAD
+                        });
+                    }
                 }
             }, this)
         };
@@ -314,7 +334,11 @@ class Blyr {
 
         // Re-enable the vignette effect for each actor
         Main.overview._backgroundGroup.get_children().forEach((actor) => {
-            actor.vignette = true;
+            if (Shared.hasNewBackgroundActor()) {
+                actor.content.vignette = true;
+            } else {
+                actor.vignette = true;
+            }
         }, null);
     }
 
@@ -342,20 +366,36 @@ class Blyr {
         Main.overview._backgroundGroup.get_children().forEach(
             (bg) => {
                 if (bg.opacity == 255) {
-                    bg.vignette = false;
-                    bg.brightness = 1.0;
+                    let blurred_bg = null;
 
                     // Clone the background actor
-                    let blurred_bg = new Meta.BackgroundActor({
-                        name: OVERVIEW_BACKGROUND_NAME,
-                        background: bg.background,
-                        width: bg['width'],
-                        height: bg['height'],
-                        monitor: bg['monitor'],
-                        x: bg['x'],
-                        y: bg['y'],
-                        reactive: true
-                    });
+                    if (Shared.hasNewBackgroundActor()) {
+                        bg.content.vignette = false;
+                        bg.content.brightness = 1.0;
+
+                        blurred_bg = new Meta.BackgroundActor({
+                            name: OVERVIEW_BACKGROUND_NAME,
+                            content: bg.content,
+                            width: bg.width,
+                            height: bg.height,
+                            monitor: bg.monitor,
+                            x: bg.x,
+                            y: bg.y,
+                            reactive: true
+                        });
+                        blurred_bg.content.vignette = false;
+                    } else {
+                        blurred_bg = new Meta.BackgroundActor({
+                            name: OVERVIEW_BACKGROUND_NAME,
+                            background: bg.background,
+                            width: bg.width,
+                            height: bg.height,
+                            monitor: bg.monitor,
+                            x: bg.x,
+                            y: bg.y,
+                            reactive: true
+                        });
+                    }
 
                     // Apply blur effect
                     this._applyTwoPassBlur(blurred_bg, intensity, activities_brightness);
@@ -418,7 +458,7 @@ class Blyr {
         this.panelContainer = new Clutter.Actor({
             name: PANEL_CONTAINER_NAME,
             width: 0,
-            height: 0
+            height: 0,
         });
 
         let [tpx, tpy] = Main.layoutManager.panelBox.get_transformed_position();
@@ -426,14 +466,27 @@ class Blyr {
         // Clone primary background instance (we need to clone it, not just 
         // assign it, so we can modify it without influencing the main 
         // desktop background)
-        this.panel_bg = new Meta.BackgroundActor({
-            background: this.primaryBackground['background'],
-            monitor: this.primaryBackground['monitor'],
-            width: this.primaryBackground.width,
-            height: this.primaryBackground.height,
-            x: -1 * tpx,
-            y: -1 * tpy
-        });
+        if (Shared.hasNewBackgroundActor()) {
+            this.panel_bg = new Meta.BackgroundActor({
+                monitor: this.primaryBackground.monitor,
+                content: this.primaryBackground.content,
+                width: this.primaryBackground.width,
+                height: this.primaryBackground.height,
+                x: 0, //tpx, //-1.0 * tpx,
+                y: 0, //tpy, //-1.0 * tpy
+            });
+            this.panel_bg.content.vignette = false;
+            this.panel_bg.content.brightness = 1.0;
+        } else {
+            this.panel_bg = new Meta.BackgroundActor({
+                background: this.primaryBackground.background,
+                monitor: this.primaryBackground.monitor,
+                width: this.primaryBackground.width,
+                height: this.primaryBackground.height,
+                x: -1.0 * tpx,
+                y: -1.0 * tpy
+            });
+        }
 
         // Only show one part of the panel background actor as large as the 
         // panel itself
@@ -459,10 +512,16 @@ class Blyr {
     }
 
     _updateBlurredPanelActor() {
-        this.panel_bg.clear_effects();
-        let panel_brightness = Settings.get_double('panelbrightness');
-        let intensity = Settings.get_double('intensity');
-        this._applyTwoPassBlur(this.panel_bg, intensity, panel_brightness);
+        if (Shared.hasNewBackgroundActor()) {
+            //this._createBlurredPanelActor();
+            this._regenerateBlurredActors();
+        } else {
+            this.panel_bg.clear_effects();
+            let panel_brightness = Settings.get_double('panelbrightness');
+            //this.panel_bg.content.brightness = panel_brightness;
+            let intensity = Settings.get_double('intensity');
+            this._applyTwoPassBlur(this.panel_bg, intensity, panel_brightness);
+        }
     }
 
     /***************************************************************

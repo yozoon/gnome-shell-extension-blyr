@@ -42,11 +42,18 @@ function checkShellVersion() {
 
 function supportsNativeBlur() {
     let shell_version = checkShellVersion();
-	let native;
 	if(shell_version >= 336) {
-        native = true;
+        return true;
     } else {
-        native = false;
+        return false;
     }
-    return native;
+}
+
+function hasNewBackgroundActor() {
+    let shell_version = checkShellVersion();
+	if(shell_version >= 338) {
+        return true;
+    } else {
+        return false;
+    }
 }

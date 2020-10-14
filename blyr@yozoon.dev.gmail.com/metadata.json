@@ -8,8 +8,9 @@
     "3.30",
     "3.32",
     "3.34",
-    "3.36"
+    "3.36",
+    "3.38"
   ],
   "url": "https://github.com/yozoon/gnome-shell-extension-blyr",
-  "version": 8
+  "version": 9
 }
