@@ -275,7 +275,6 @@ class Blyr {
                     actor.content.vignette = false;
                     actor.content.brightness = this.activities_brightness;
                     actor.content.vignette_sharpness = 0;
-
                 } else {
                     actor.vignette = true;
                     actor.brightness = 1.0;
@@ -470,21 +469,24 @@ class Blyr {
             this.panel_bg = new Meta.BackgroundActor({
                 monitor: this.primaryBackground.monitor,
                 content: this.primaryBackground.content,
-                width: this.primaryBackground.width,
-                height: this.primaryBackground.height,
-                x: 0, //tpx, //-1.0 * tpx,
-                y: 0, //tpy, //-1.0 * tpy
+                width: Main.layoutManager.panelBox.width,
+                height: Main.layoutManager.panelBox.width,
+                x: parseFloat(-1.0 * tpx),
+                y: parseFloat(-1.0 * tpy),
             });
+            
             this.panel_bg.content.vignette = false;
             this.panel_bg.content.brightness = 1.0;
+            this.panel_bg.content.gradient = false;
+
         } else {
             this.panel_bg = new Meta.BackgroundActor({
                 background: this.primaryBackground.background,
                 monitor: this.primaryBackground.monitor,
                 width: this.primaryBackground.width,
                 height: this.primaryBackground.height,
-                x: -1.0 * tpx,
-                y: -1.0 * tpy
+                x: parseFloat(-1.0 * tpx),
+                y: parseFloat(-1.0 * tpy)
             });
         }
 
@@ -495,6 +497,8 @@ class Blyr {
             tpy,
             Main.layoutManager.panelBox.width,
             Main.layoutManager.panelBox.height);
+
+        this.panel_bg.set_opacity(255);
 
         // Get current panel brightness and blur intensity value
         let panel_brightness = Settings.get_double('panelbrightness');

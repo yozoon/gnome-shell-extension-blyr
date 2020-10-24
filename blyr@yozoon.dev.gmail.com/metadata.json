@@ -3,7 +3,6 @@
   "description": "Apply a Blur Effect to GNOME Shell UI elements.",
   "uuid": "blyr@yozoon.dev.gmail.com",
   "shell-version": [
-    "3.26",
     "3.28",
     "3.30",
     "3.32",
