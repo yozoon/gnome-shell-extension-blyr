@@ -1,6 +1,10 @@
+> :warning: UNMAINTAINED :warning:
+>
+> I highly recommend you to check out [Blur my Shell](https://github.com/aunetx/blur-my-shell) (GNOME 3.36+)
+
 # GNOME Shell Extension - Blyr
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html) [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.me/jpiso/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html)
 
 Apply a Blur Effect to GNOME Shell UI elements
 
