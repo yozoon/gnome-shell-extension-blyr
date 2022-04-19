@@ -54,8 +54,3 @@ Some Ubuntu users reported that the preferences dialog didn't appear after openi
 ```bash
 sudo apt install gir1.2-gtkclutter-1.0
 ```
-
-## Donations
-If you like this extension, maybe consider donating to support its continuing development. :)
-
-[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.me/jpiso/)
